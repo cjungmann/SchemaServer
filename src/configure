@@ -163,7 +163,7 @@ clean:
 	rm -f *.o
 	rm -f adbranch bindc bindstack ctyper datastack genericuser multipart_pull \
          prandstr procedure qstringer schema.fcgi schemaproc specsreader stacker \
-         storedproc vclasses
+         storedproc vclasses Makefile
 
 release: CXXFLAGS += -U _DEBUG -D NDEBUG
 
