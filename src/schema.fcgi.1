@@ -42,25 +42,109 @@ program.  The input file can contain an mime-encoded file to simulate
 a file import.  See the save-post instruction in the Schema Framework
 documentation for help creating an input file.
 .SS "Mode Debugging"
-When an SRM script file is loaded, the following options will return helpful
-information about the script file or the results of imports and shared modes
-to the effective response mode.
-.TP
-.B \-d mode
-Print the contents of the named node.
+In the context of SRM (Schema Response Mode) files, a mode is any instruction
+that starts on the first column.  Response modes are those that service an
+HTTP request, other modes set up the processing environment or define shared
+elements that can be used by other modes.
+
+The following options help manage the modes in an SRM file.
 .TP
 .B \-d modes
-Print a list of the requestable response modes in the SRM file.
+Print a list that includes only the requestable response modes in the SRM file.
 .TP
 .B \-d all-modes
-Prints a list of all modes in the SRM file, including global and shared
+Prints a list of all modes in the SRM file, response modes and also including
+global and shared modes.
 modes
+.TP
+.B \-d mode
+When a specific mode is selected, this debugging option will print the
+reconciled response mode, having incorporated any shared modes as if they
+are local.
 .TP
 .B \-d types
 Prints a list of predefined response mode types. User-defined types are
 allowed, but the the server will produce default output. A user-defined
 type should expect to be caught in the XSL stylesheet and result in custom
 output.
+./"  
+./"
+.SH EXAMPLES
+The command line options are intended to help debugging SRM scripts and
+even the server object itself.
+
+.TP
+.B Selecting a Response Mode
+This is the beginning of the common uses of the \fBschema.fcgi\fR command
+line interface.
+
+.RS
+.RS
+\fBschema.fcgi\fR Person.srm
+.br
+\fBschema.fcgi\fR -s Person.srm
+.br
+\fBschema.fcgi\fR Person.srm -m list
+.br
+\fBschema.fcgi\fR -s Person.srm -m list
+.RE
+
+In these equivalent commands, \fBschema.fcgi\fR selects the \fIlist\fR 
+response mode out of the \fIPerson.srm\fR script file.  When the \fB\-m\fR
+mode-selecting option is missing, the value of \fI$default-mode\fR is used,
+and if that is also missing, the first response mode in the script will be
+selected.
+.RE
+.TP
+.B Simulating an HTTP Request to a Response Mode
+Unless debugging options are included, the output of \fBschema.fcgi\fR
+will always be an XML document.  The resulting document can be piped to
+\fBxsltproc\fR to see the result of the XSL transformation, or it can be
+saved to a diskfile and opened with a browser program to see the formatted
+result.
+.RS
+
+.TP
+\fBschema.fcgi\fR Person.srm -m list
+For a response mode whose procedure takes no parameters, simply selecting
+the mode will write out the XML document that would have been sent to the
+client.
+.TP
+\fBschema.fcgi\fR Person.srm -m form_submit -v id=1 -v fname=Chuck -v lname=Jungmann
+The \fB\-v\fR values must include the parameter name and the value.  Look to
+the stored procedure definition to see which parameters are necessary and
+how they are used.
+.TP
+\fBschema.fcgi\fR Person.srm -m list=1
+An alternative construction works for a response mode whose procedure
+has a single parameter.  The parameter name is not needed because there is
+no question of which is the intended parameter.
+.RE
+
+.TP
+.B Debugging Response Modes
+Response modes can include shared modes that pull instructions from elsewhere
+in the script and its included files.  There are several variations of the
+\fB\-d\fR debug mode option that reveal the effective contents of the response
+mode after the shares are included.
+.br
+.RS
+.TP
+\fBschema.fcgi\fR Person.srm -d modes
+Print all response modes from script \fIPerson.srm\fR.
+.br
+.TP
+\fBschema.fcgi\fR Person.srm -d all-modes
+Print all modes from \fIPerson.srm\fR, including response modes, global
+instructions and shared modes.
+.br
+.TP
+\fBschema.fcgi\fR Person.srm -m list -d mode
+Print the effective contents of the selected response mode instructions,
+having incorporated imports and shared references into the mode listing.
+.br
+.RE
+.RE
 
 .SH AUTHOR
 .SH SEE ALSO
