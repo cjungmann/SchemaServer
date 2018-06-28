@@ -107,6 +107,8 @@ install:
 	install -D --mode=644 ../LICENSE             /usr/share/doc/schemafw
 	install -D --mode=644 ../install/default.xsl /usr/local/lib/schemafw/default.xsl
 	install --mode=644 ../install/sys_procs.sql  /usr/local/lib/schemafw/sys_procs.sql
+	cp schema.fcgi.1                             /usr/share/man/man1
+	gzip /usr/share/man/man1/schema.fcgi.1
 	cp -r ../install/ods                         /usr/local/lib/schemafw/
 
 	uglifyjs ../install/web_includes/sfw_*.js --mangle --compress --output ../install/web_includes/sfw.min.js
@@ -131,6 +133,10 @@ else
 	install --mode=644 README.md                /usr/share/doc/schemafw
 	install -D --mode=644 ../userguide          /usr/share/doc/schemafw
 endif
+
+update-man-pages:
+	cp schema.fcgi.1                             /usr/share/man/man1
+	gzip /usr/share/man/man1/schema.fcgi.1
 
 update-server:
 	install -D --mode=755 schema.fcgi           /usr/local/lib/cgi-bin/schema.fcgi
