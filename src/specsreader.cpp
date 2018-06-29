@@ -187,39 +187,70 @@ void Advisor_Index::t_collect_modes(Advisor &advisor,
    BEnds bends;
    advisor.rewind();
 
+   // Use lambda functions for two code locations to set these variables:
+   const char *name;
+   const char *value;
+   size_t len_extra;
+   size_t len_node;
+
+   // Set as lambda because used for autoload.srm and for loop adds
+   auto set_vars = [&name,&value,&len_extra,&len_node](const char *pname, const char *val)
+   {
+      name=pname;
+      value=val;
+      len_extra = (val) ? 1+strlen(val) : 0;
+      len_node = ninfo::line_size(name,len_extra);
+   };
+
+   // Set as lambda because used for autoload.srm and for loop adds
+   auto set_ninfo = [&advisor,&filepath,
+                     &value,&len_extra](ninfo* node, bool autorun_entry)
+   {
+      info &i = node->object();
+
+      i.m_position = autorun_entry ? -1 : advisor.get_position();
+      i.m_filepath = filepath;
+         
+      if (len_extra)
+      {
+         i.m_value = static_cast<const char*>(node->extra());
+         memcpy(const_cast<char*>(i.m_value), value, len_extra);
+      }
+      else
+         i.m_value = nullptr;
+   };
+
+   // If we're in the HTTP request-loaded SRM file (filepath==nullptr),
+   // add an artificial include instruction if autoload.srm exists.
+   if (!filepath)
+   {
+      const char alname[]="autoload.srm";
+      if (!access(alname,F_OK))
+      {
+         set_vars("$include",alname);
+         ninfo* node = ninfo::init_handle(alloca(len_node),name,len_extra,nullptr);
+         set_ninfo(node, true);
+         bends.append(node);
+      }
+   }
+
    while (!advisor.end())
    {
       // Only saving modes
       if (advisor.level()==0)
       {
-         const char *name = advisor.tag();
-         const char *value = advisor.value();
+         set_vars(advisor.tag(), advisor.value());
+         ninfo* node = ninfo::init_handle(alloca(len_node),name,len_extra,nullptr);
+         set_ninfo(node,false);
 
-         size_t len_extra = (value) ? 1+strlen(value) : 0;
-         size_t len = ninfo::line_size(name, len_extra);
-         ninfo* node = ninfo::init_handle(alloca(len),name,len_extra,nullptr);
-         info& i = node->object();
-         i.m_position = advisor.get_position();
-         i.m_filepath = filepath;
-         
-         if (len_extra)
-         {
-            i.m_value = static_cast<const char*>(node->extra());
-            memcpy(const_cast<char*>(i.m_value), value, len_extra);
-         }
-         else
-            i.m_value = nullptr;
-
-         // Get next line to see if its level is 0, meaning it's a new mode, or
-         // above 0, meaning that it's a child and that the mode has children.
-         
-         // Wait to get the next line until we've saved the
-         // first mode's info because get_next_line() will overwrite
-         // the name, value, and position values.
          advisor.get_next_line();
-         i.m_has_children = advisor.level() > 0;
-         if (!i.m_has_children)
-            i.m_filepath = nullptr;
+
+         // Modes without children do not need to save a filepath
+         // because the mode contains all the available information:
+         if (advisor.level() > 0)
+            node->object().m_has_children = true;
+         else
+            node->object().m_filepath = nullptr;
 
          bends.append(node);
       }
