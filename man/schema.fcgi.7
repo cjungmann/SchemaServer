@@ -1,0 +1,192 @@
+.TH schema.fcgi 7 "" "schema.fcgi" "Setup Instructions"
+.\" groff formatting setup,
+.\" disable justification:
+.ad l
+.\"
+
+.SH NAME
+schema.fcgi \- Schema Framework Request Processor
+.SH SYNOPSIS
+.B schema.fcgi
+*
+.SH DESCRIPTION
+.PP
+.B schema.fcgi
+is a FastCGI server component that serves XML documents from the results
+of MySQL procedures that are run in response to HTTP requests.
+
+This document is an abbreviated list of steps for setting up the back-end
+environment for SchemaServer and the client side includes from the Schema
+Framework repository.
+
+.SH SETUP STEPS
+.SS PREPARE MYSQL FOR THE NEW SITE
+This is in two steps.  Rather than explain the necessary parameters in the
+\fBmysql\fR commands, we'll set the parameters in an initial step, then we'll
+copy-and-paste the commands using variables for the parameters:
+.PP
+.B Set Unique Parameter Values
+.sp 2
+Set environment variables to be used when creating the database and loading
+the procedures.
+.sp
+.RS 4
+User=root
+.br
+PWord=\fIpassword\fR
+.br
+DBase=\fIdatabase_name\fR
+.br
+.RE
+.PP
+.B Create Database and Install System Procedures
+.sp 2
+After having set \fIUser\fR, \fIPWord\fR, and \fIDBase\fR variables,
+copy the following lines and paste them onto the command line.  Leave off the first
+line if you have already created the database.  The \fBcd\fR command is here to
+avoid line wrap on the command that loads the \fBsys_procs.sql\fR file.
+.sp
+.RS 4
+\fBcd\fR /usr/local/lib/schemafw
+.br
+\fBmysql\fR -u ${User} -p${PWord} -e "CREATE DATABASE ${DBase}"
+.br
+\fBmysql\fR -f -u ${User} -p${PWord} ${DBase} < sys_procs.sql
+.RE
+.SS CONFIGURE APACHE SERVER WEB SITE
+.PP
+Apache needs a directory to which the Virtual Host will point.
+.sp
+.PP
+.B Create New Directory
+.sp 2
+Create a directory to which Apache will find the web site files.  This example
+will follow a convention for associating related directories in anticipation
+of later installing the client-side Schema Framework, the only necessary thing
+is to configure Apache to find the directory.
+.sp
+.RS 4
+cd /var/www
+.br
+sudo mkdir \fIMySite\fR
+.br
+cd \fIMySite\fR
+.br
+sudo mkdir generated setup site
+.RE
+.sp 2
+The directory \fI/var/www/\fIMySite\fR/site\fR. will host the website files.
+The other directories (generated and setup) are suggested in order to more
+easily bundle the complete set of files needed to duplicate your website.
+This will make it easier to put your site under version control and to install
+a localhost development website to a public location.
+.PP
+.B Configure Apache
+.sp 2
+Apache must be prepared to associate a host name to the website files in the
+new directory.  This is done with a configuration file.
+
+Go to the Apache sites directory:
+.sp
+.RS 4
+cd /etc/apache2/sites-available
+.RE
+.sp
+Use your favorite text editor to open a new file in the directory:
+.sp
+.RS 4
+sudo emacs \fImysite.conf\fR
+.RE
+.sp
+Enter the following text into the new file, making adjustments according to
+your unique setup.  Pay attention to \fBDocumentRoot\fR so that it matches the
+path where your website files reside, and to \fBDirectoryIndex\fR so that it
+matches the name of a real file in the DocumentRoot directory.
+.sp 2
+.RS 4
+<VirtualHost *:80>
+.br
+   ServerName www.mysite.com
+.br
+   ServerAlias mysite
+.br
+   DocumentRoot /var/www/\fIMySite\fR/site
+.br
+   DirectoryIndex index.html
+.br
+</VirtualHost>
+.RE
+.sp 2
+Enable the site and restart Apache.  Make sure \fImysite\fR is replaced with
+the root name of the configuration file.  In this example, since the
+configuration file is named \fImysite.conf\fR, use \fImysite\fR with the
+\fBa2ensite\fR command.
+.sp 2
+.RS 4
+sudo a2ensite \fImysite\fR
+.br
+sudo service apache2 restart
+.SS PREPARE HOSTNAME TRANSLATION
+Apache will serve the new site when it receives a request for its hostname.
+For that to work, we need to provide a translation from the hostname to an
+IP address.  We'll talk about two different methods of translating the
+hostname: local and internet.
+.TP localhost CONFIGURATION
+This is the simplest version.  On a development workstation or LAN, the hostname
+translation can be done the the \fB/etc/hosts\fR file.  The following is a
+command for providing a hostname translation to access the site on localhost:
+.RS 4
+sudo echo "127.0.0.1 mysite" >> /etc/hosts
+.RE
+To remove the instruction, open \fB/etc/hosts\fR with a text editor and remove
+or comment-out the line.
+.sp
+If you own a domain name, you can create a web-based hostname translation with
+a domain name server (DNS).
+.RS 
+.IP "1"
+Go to the domain registrar website of your domain name \fImysite.com\fR.
+.IP "2"
+Find the \fIhost records\fR page for your domain name.
+.IP "3"
+Add an \fBA\fR record for each ServerName or ServerAlias that you want to be
+accessible from the web.  The \fBA\fR record only contains the prefix of the 
+hostname.  In our example, with Apache watching for \fIwww.mysite.com\fR, we
+make an \fBA\fR record for \fIwww\fR.
+.RE
+.sp 2
+It will take some time for the change to become active.  Check occasionally,
+but be patient.
+
+.SS PREPARE THE CLIENT-SIDE FRAMEWORK
+.PP
+In this example, we are loading the Schema Framework to be the consumer of
+the Schema Server services.  This step is not part of configuring the Schema
+Server, but is part of the process of making a working website.  The Schema
+Framework is one implementation of a client-side consumer of the Schema Server
+services.  It is possible that the framework may be forked or even replaced
+in the future, in which case you'll follow instructions associated with the
+newer framework.
+.PP
+This step assumes that you have installed the
+.UR https://github.com/cjungmann/schemafw
+Schema Framework
+.UE 
+from which the files can be copied.  This example copies boilerplate files from
+the Schema Framework installation into the directory we setup in previous steps.
+.sp 2
+.RS 4
+cd /var/www/\fIMySite\fR/site
+.br
+cp /usr/local/lib/schemafw/default.xsl .
+.br
+ln -s /usr/local/lib/schemafw/web_includes includes
+.RE
+.sp 2
+.PP
+Edit \fIdefault.xsl\fR to replace, at least, the \fItitle\fR and \fIh1\fR elements,
+replacing them with the title and main head strings appropriate for your website.
+
+
+
+
