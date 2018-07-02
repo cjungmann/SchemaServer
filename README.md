@@ -12,15 +12,39 @@ two reasons for which I did this:
 
 ## Installation
 
-- Clone the project from github
-  ~~~sh
-  cd ~
-  git clone https://github.com/cjungmann/SchemaServer.git
-  cd SchemaServer/src
-  ./configure
-  make
-  sudo make install
-  ~~~~
+### Download
+
+There are a few options for downloading the project, from selecting
+a specific (non-master) branch, to downloading the files without the
+repository history.  In the following cases, it is assumed that the
+clone is made in the home directory.
+
+- Download the full repository
+  `git clone https://gitub.com/cjungmann/SchemaServer.git`
+
+- Download the master branch without history:
+  `git clone --depth=1  https://gitub.com/cjungmann/SchemaServer.git`
+
+- Download the only dev repository
+  `git clone -b dev --single-branch https://gitub.com/cjungmann/SchemaServer.git`
+
+### Install
+
+Having downloaded what you need, build and install with the following
+
+~~~sh
+cd ~/SchemaServer/src
+./configure
+make
+sudo make install
+~~~~
+
+### Uninstall
+
+~~~sh
+cd ~/SchemaServer/src
+sudo make uninstall
+~~~
 
 ## Documentation
 
