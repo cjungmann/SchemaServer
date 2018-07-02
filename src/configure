@@ -7,9 +7,6 @@ CGI_PATH=$(grep 'ScriptAlias\s\+\/cgi-bin' /etc/apache2/conf-available/serve-cgi
 # truncate output file:
 >${output}
 
-ss_ssource=${PWD}/schema
-ss_isource=${PWD}/web_includes
-
 # Get flags from mysql_config:
 echo "MYSQL_COMPILE_FLAGS = $(mysql_config --cflags)" >> ${output}
 echo "MYSQL_LINK_FLAGS = $(mysql_config --libs)" >> ${output}
@@ -23,9 +20,6 @@ COMPILE_FLAGS = -std=c++11 -Wall -Werror -Weffc++ -pedantic -ggdb -D _DEBUG -D F
 CXXFLAGS = $(MYSQL_COMPILE_FLAGS) $(COMPILE_FLAGS)
 LINK_FLAGS = $(VERSION_LINK_FLAGS) -L /usr/local/lib -lfcgi $(MYSQL_LINK_FLAGS)
 CXX = g++
-
-# flag if cmark installed for userguide target:
-CMARK_FLAG := $(shell which cmark 2> /dev/null)
 
 objlist=schema.o istdio.o xmlutils.o qstringer.o advisor.o datastack.o \
 specsreader.o adbranch.o prandstr.o vclasses.o ctyper.o bindc.o \
@@ -103,39 +97,21 @@ storedproc.o : storedproc.cpp ${hpplist}
 
 # Special builds
 install:
+	install -D --mode=644 ../LICENSE             /usr/share/doc/SchemaServer
+	# install executable and make link
 	install -D --mode=755 schema.fcgi            /usr/local/lib/cgi-bin/schema.fcgi
-	install -D --mode=644 ../LICENSE             /usr/share/doc/schemafw
-	install -D --mode=644 ../install/default.xsl /usr/local/lib/schemafw/default.xsl
-	install --mode=644 ../install/sys_procs.sql  /usr/local/lib/schemafw/sys_procs.sql
-	cp -r ../install/ods                         /usr/local/lib/schemafw/
+	cp -s /usr/local/lib/cgi-bin/schema.fcgi     /usr/bin/schema.fcgi
+
+	install --mode=644 ../install/sys_procs.sql  /usr/local/lib/SchemaServer/install/sys_procs.sql
+	cp -r ../install/ods                         /usr/local/lib/SchemaServer/install
 	# install man pages:
 	cp ../man/schema.fcgi.1                      /usr/share/man/man1
 	gzip -f /usr/share/man/man1/schema.fcgi.1
 	cp ../man/schema.fcgi.7                      /usr/share/man/man7
 	gzip -f /usr/share/man/man7/schema.fcgi.7
-
-	uglifyjs ../install/web_includes/sfw_*.js --mangle --compress --output ../install/web_includes/sfw.min.js
-#	cat ../install/web_includes/sfw_*.js > ../install/web_includes/sfw.js
-#	curl -X POST -s --data-urlencode 'input@../install/web_includes/sfw.js' \
-#       https://javascript-minifier.com/raw > ../install/web_includes/sfw.min.js
-
-	cp -r ../install/web_includes                /usr/local/lib/schemafw/
-
-	cp -s /usr/local/lib/cgi-bin/schema.fcgi     /usr/bin/schema.fcgi
-
-	install -D --mode=644 ../install/schemafw.conf /etc/apache2/conf-available/schemafw.conf
-
-userguide:
-	mkdir -p /usr/share/doc/schemafw
-ifdef CMARK_FLAG
-	mkdir -p /usr/share/doc/schemafw/html
-	cd ../userguide && ./convert
-	install -m644 ../userguide/html/* /usr/share/doc/schemafw/html
-	cd ../userguide && rm -r html
-else
-	install --mode=644 README.md                /usr/share/doc/schemafw
-	install -D --mode=644 ../userguide          /usr/share/doc/schemafw
-endif
+	# Prepare Apache to recognize schema.fcgi as a document handler
+	install -D --mode=644 ../install/SchemaServer.conf /etc/apache2/conf-available/SchemaServer.conf
+	a2enconf SchemaServer
 
 update-man-pages:
 	cp ../man/schema.fcgi.1                      /usr/share/man/man1
@@ -151,24 +127,19 @@ stop-update:
 	install -D --mode=755 schema.fcgi           /usr/local/lib/cgi-bin/schema.fcgi
 	sudo /etc/init.d/apache2 start
 
-update-client:
-	uglifyjs ../install/web_includes/sfw_*.js --mangle --compress --output ../install/web_includes/sfw.min.js
-	# cat ../install/web_includes/sfw_*.js > ../install/web_includes/sfw.js
-	# curl -X POST -s --data-urlencode 'input@../install/web_includes/sfw.js' \
-   #      https://javascript-minifier.com/raw > ../install/web_includes/sfw.min.js
-	cp ../LICENSE                               /usr/share/doc/schemafw
-	cp ../install/default.xsl                   /usr/local/lib/schemafw/default.xsl
-	cp ../install/sys_procs.sql                 /usr/local/lib/schemafw/sys_procs.sql
-	cp -r ../install/ods                        /usr/local/lib/schemafw/
-	cp -r ../install/web_includes               /usr/local/lib/schemafw/
-	xsl-import ../install/web_includes/sfw_debug.xsl | xmllint --format - > /usr/local/lib/schemafw/web_includes/sfw_compiled.xsl
+update-installs:
+	cp ../install/sys_procs.sql                 /usr/local/lib/SchemaServer/sys_procs.sql
+	cp -r ../install/ods                        /usr/local/lib/SchemaServer/
 
 uninstall:
+	# disable apache configuration ahead of remove the conf file
+	a2disconf SchemaServer
+	rm -f /etc/apache2/conf-available/SchemaServer.conf
+	# remove the link and the executable
 	rm -f /usr/bin/schema.fcgi
-
 	rm -r -f /usr/local/lib/cgi-bin/schema.fcgi
-	rm -r -f /usr/local/lib/schemafw
-	rm -r -f /usr/share/doc/schemafw
+	# final clean-up
+	rm -r -f /usr/local/lib/SchemaServer
 
 clean:
 	rm -f *.o
