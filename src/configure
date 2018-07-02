@@ -138,6 +138,9 @@ uninstall:
 	# remove the link and the executable
 	rm -f /usr/bin/schema.fcgi
 	rm -r -f /usr/local/lib/cgi-bin/schema.fcgi
+	# remove man pages
+	rm -f /usr/share/man/man1/schema.fcgi.1
+	rm -f /usr/share/man/man7/schema.fcgi.7
 	# final clean-up
 	rm -r -f /usr/local/lib/SchemaServer
 
