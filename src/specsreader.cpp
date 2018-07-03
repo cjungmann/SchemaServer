@@ -874,7 +874,13 @@ void SpecsReader::t_build_branch(long position, abh_callback &callback) const
                auto *amode = get_shared_advisor_mode(pvalue);
 
                if (!amode)
-                  throw_missing("shared reference", pvalue);
+               {
+                  if (strncmp(pvalue,"$autoload_",10)==0)
+                     continue;
+                  else
+                     throw_missing("shared reference", pvalue);
+               }
+
                if (f_prep_advisor(amode))
                {
                   void *buff = alloca(len_shared_handle(adv));
