@@ -154,6 +154,12 @@ release: CXXFLAGS += -U _DEBUG -D NDEBUG
 
 release: all
 
+run-test:
+	cd ../test/; ./test_install; ./test_site
+
+remove-test:
+	cd ../test/; ./test_uninstall
+
 increment_major:
 	$(call increment_file,$(VERSION_MAJOR_FILE))
 	$(call zero_file, $(VERSION_MINOR_FILE))
