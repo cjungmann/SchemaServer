@@ -63,25 +63,27 @@ create_mysql_database_and_table()
         echo "Database '${sname}' is already installed." >&2
     else
         echo "Create test database and load tables and procedures."
-
         mysql -e "CREATE DATABASE ${sname}"
         exval=$?
         if [ $exval -ne 0 ]; then
             echo "Failed to create database '${sname}'"
             return $exval
         fi
-        mysql "${sname}" < ../install/sys_procs.sql
+        echo "Install schema server system procedures."
+        mysql "${sname}" -f < ../install/sys_procs.sql
         exval=$?
         if [ $exval -ne 0 ]; then
             echo "Failed to install the system procedures."
             return $exval
         fi
+        echo "Install test database table (Person)."
         mysql "${sname}" < setup/tables.sql
         exval=$?
         if [ $exval -ne 0 ]; then
             echo "Failed to install the test tables."
             return $exval
         fi
+        echo "Install test procedures that run Person.srm"
         mysql "${sname}" < setup/Person.sql
         exval=$?
         if [ $exval -ne 0 ]; then
@@ -115,7 +117,6 @@ create_and_enable_apache_site()
         fi
 
         service apache2 reload
-        # apache2ctl reload
         exval=$?
         if [ $exval -ne 0 ]; then
             exit $exval
