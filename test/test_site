@@ -42,8 +42,8 @@ show_add_item_page()
     yad "${yadopts[@]}"
 }
 
-show_default_page
 show_add_item_page
+show_default_page
 
 
 # echo
