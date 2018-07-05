@@ -46,14 +46,17 @@ and runs tests of **schema.fcgi** in command line mode and in webserver mode.
 The files will be copied to */var/www/SchemaServer_Test* to ensure that
 Apache will permit the site to run.
 
+While still in ~/SchemaServer/src, run
+
 ~~~sh
 make run-test
 ~~~
 
 ### Uninstall Test Installation
 
+While still in ~/SchemaServer/src, run
+
 ~~~sh
-cd ~/SchemaServer/src
 sudo make remove-test
 ~~~
 
