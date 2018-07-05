@@ -1,5 +1,3 @@
-CREATE DATABASE SchemaServer_Test;
-
 USE SchemaServer_Test;
 
 SET default_storage_engine=InnoDB;
