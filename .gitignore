@@ -1,3 +1,8 @@
 Makefile
 *.o
 schema.fcgi
+
+test/generated/
+test/setup/SchemaServer_Test.conf
+test/site/default.xsl
+test/site/includes
