@@ -39,11 +39,22 @@ make
 sudo make install
 ~~~~
 
-### Uninstall
+### Test Installation
+
+The Makefile includes a script that sets up a simple SchemaServer service
+and runs tests of **schema.fcgi** in command line mode and in webserver mode.
+The files will be copied to */var/www/SchemaServer_Test* to ensure that
+Apache will permit the site to run.
+
+~~~sh
+make run-test
+~~~
+
+### Uninstall Test Installation
 
 ~~~sh
 cd ~/SchemaServer/src
-sudo make uninstall
+sudo make remove-test
 ~~~
 
 ## Documentation
