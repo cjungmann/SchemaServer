@@ -1,0 +1,150 @@
+#!/bin/bash
+declare sname="SchemaServer_Test"
+declare shost="schemaserver_test"
+declare conf_target="/etc/apache2/sites-available/SchemaServer_Test.conf"
+declare dirSite
+
+
+# Creates a linked directory in /var/www for testing proper Apache setup.
+# Returns 0 for successs, leaving variable dirSite with the proper path.
+create_www_directory()
+{
+    declare dirStart="$PWD"
+    local -i exval
+
+    cd site
+    exval=$?
+    if [ $exval -ne 0 ]; then
+        echo "Failed to change directory into \"test\" ($exval)"
+        return $exval
+    fi
+
+    declare dirSource="$PWD"
+
+    cd /var/www
+    echo "Making symbolic directory link from '$dirSource' to '${PWD}/SchemaServer_Test'"
+    ln -s "${dirSource}" "SchemaServer_Test"
+    exval=$?
+    if [ $exval -ne 0 ]; then
+        echo "Failed to make a symbolic link to /var/www ($exval)"
+        return $exval
+    fi
+
+    cd SchemaServer_Test
+    exval=$?
+    if [ $exval -ne 0 ]; then
+        echo "Failed to change directory into SchemaServer_Test ($exval)"
+        return $exval
+    fi
+
+    # Set global variable to be included in the .conf file:
+    dirSite="$PWD"
+
+    cd "$dirStart"
+
+    return 0
+}
+
+
+create_mysql_database_and_table()
+{
+    declare -i exval tcount
+    declare -a cmd
+
+    cmd=(
+        -Ns
+        -e
+        "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='${sname}'"
+    )
+
+    tcount=$( mysql "${cmd[@]}" )
+    exval=$?
+    if [ $exval -eq 0 -a $tcount -eq 1  ]; then
+        echo "Database '${sname}' is already installed." >&2
+    else
+        echo "Create test database and load tables and procedures."
+
+        mysql -e "CREATE DATABASE ${sname}"
+        exval=$?
+        if [ $exval -ne 0 ]; then
+            echo "Failed to create database '${sname}'"
+            return $exval
+        fi
+        mysql "${sname}" < ../install/sys_procs.sql
+        exval=$?
+        if [ $exval -ne 0 ]; then
+            echo "Failed to install the system procedures."
+            return $exval
+        fi
+        mysql "${sname}" < setup/tables.sql
+        exval=$?
+        if [ $exval -ne 0 ]; then
+            echo "Failed to install the test tables."
+            return $exval
+        fi
+        mysql "${sname}" < setup/Person.sql
+        exval=$?
+        if [ $exval -ne 0 ]; then
+            echo "Failed to install the test procedures."
+            return $exval
+        fi
+    fi
+
+    return 0
+}
+
+create_and_enable_apache_site()
+{
+    local -i exval
+
+    if [ -f "${conf_target}" ]; then
+        echo "${conf_target} is already installed" >&2
+    else
+        echo "Install Apache site configuration file, then enable it."
+        echo "<VirtualHost *:80>"                > "${conf_target}"
+        echo "    ServerName ${shost}"          >> "${conf_target}"
+        echo "    DocumentRoot ${dirSite}"      >> "${conf_target}"
+        echo "    DirectoryIndex Person.srm"     >> "${conf_target}"
+        echo "</VirtualHost>"                   >> "${conf_target}"
+
+        a2ensite "${sname}"
+        exval=$?
+        if [ $exval -ne 0 ]; then
+            echo "Failed to enable site ${sname}"
+            exit
+        fi
+
+        service apache2 reload
+        # apache2ctl reload
+        exval=$?
+        if [ $exval -ne 0 ]; then
+            exit $exval
+        else
+            echo
+            echo "Apache should now be running with the site ${shost} available."
+        fi
+    fi
+}
+
+
+declare -i exval
+
+create_www_directory
+exval=$?
+if [ $exval -ne 0 ]; then
+    exit $exval
+fi
+
+create_mysql_database_and_table
+exval=$?
+if [ $exval -ne 0 ]; then
+    exit $exval
+fi
+
+create_and_enable_apache_site
+exval=$?
+if [ $exval -ne 0 ]; then
+    exit $exval
+fi
+
+

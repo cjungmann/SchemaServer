@@ -1,0 +1,16 @@
+#!/bin/bash
+
+declare sname="SchemaServer_Test"
+
+echo "Disable $sname configuration"
+a2dissite "$sname"
+service apache2 restart
+
+echo "Remove ${sname}.conf from /etc/apache2/sites-available"
+rm "/etc/apache2/sites-available/${sname}.conf"
+
+echo "Remove linked $sname directory from /var/www"
+cd /var/www
+unlink $sname
+
+mysql -e "DROP DATABASE $sname"

@@ -1,0 +1,73 @@
+#!/bin/bash
+
+declare shost="schemaserver_test"
+
+declare -a comyad=(
+    --title "wget result"
+    --height 600
+    --width 800
+    )
+
+declare -a comopts=(
+    -q                      # quiet mode
+    # -S                      # print server response headers
+    -O -                    # output to stdout
+    --header "Host: $shost" # spoof the hostname
+)
+declare -a options pdata yadopts
+declare xmlresult
+
+
+show_default_page()
+{
+    local -a options yadopts
+    local xmlresult
+    options=( "http://localhost/Person.srm" "${comopts[@]}" )
+    xmlresult=$( wget "${options[@]}" )
+    yadopts=( "${comyad[@]}" $( echo "${xmlresult}" | xsltproc test.xsl - ) )
+    yad "${yadopts[@]}"
+}
+
+show_add_item_page()
+{
+    local -a options yadopts pdata
+    local xmlresult
+    options=( "http://localhost/Person.srm?add" "${comopts[@]}" )
+    pdata=( "add" )
+    xmlresult=$( wget "${options[@]}" --post-data="${pdata[*]}" )
+    echo "${xmlresult}"
+    local IFS=$'\n'
+    yadopts=( "${comyad[@]}" $( echo "${xmlresult}" | xsltproc test.xsl - ) )
+    echo "${yadopts[@]}"
+    yad "${yadopts[@]}"
+}
+
+# show_default_page
+show_add_item_page
+
+
+# echo
+# pdata=( "list" )
+# echo "Get default page (a list page)"
+
+# # echo "Get add form parameters:"
+# options=( "http://localhost/Person.srm?add" "${comopts[@]}" )
+
+# pdata=( "add" )
+# xmlresult=$( wget "${options[@]}" --post-data="${pdata[*]}" )
+# echo "${xmlresult}" | xsltproc test.xsl -
+
+
+# echo "Add a person record"
+
+# pdata=("fname=Chuck"
+#        "lname=Jungmann"
+#        "dob=1960-04-21" )
+
+# options=( "http://localhost/Person.srm?add_submit" "${comopts[@]}" )
+# xmlresult=$( wget "${options[@]}" --post-data="${pdata[*]}" )
+# echo "${xmlresult}" | xsltproc test.xsl -
+
+# options=( "http://localhost/Person.srm" "${comopts[@]}" )
+# xmlresult=$( wget "${options[@]}" )
+# echo "${xmlresult}" | xsltproc test.xsl -
