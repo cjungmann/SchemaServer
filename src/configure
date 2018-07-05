@@ -155,7 +155,7 @@ release: CXXFLAGS += -U _DEBUG -D NDEBUG
 release: all
 
 run-test:
-	cd ../test/; ./test_install; ./test_site
+	cd ../test/; ./test_install; ./test_site Person.srm
 
 remove-test:
 	cd ../test/; ./test_uninstall
