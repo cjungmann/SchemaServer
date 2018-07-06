@@ -356,7 +356,8 @@ public:
       DEBUG_ACTION_PRINT_RESPONSE_MODES,
       DEBUG_ACTION_PRINT_ALL_MODES,
       DEBUG_ACTION_PRINT_MODE_TYPES,
-      DEBUG_ACTION_LINT
+      DEBUG_ACTION_LINT,
+      DEBUG_ACTION_LIST
    };
    /** <b>d</b>ebug-<b>a</b>ction pair */
    struct dapair { const char *name; Debug_Action action; };
@@ -410,6 +411,7 @@ public:
 
    static void print_mode_types(FILE *f);
    static void print_lint(FILE *f, const SpecsReader *reader);
+   static void print_effective_srm(FILE *f, SpecsReader *reader);
    static MODE_ACTION get_mode_type(const char *str);
 
    /**

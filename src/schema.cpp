@@ -214,6 +214,46 @@ void Schema::print_lint(FILE *f, const SpecsReader *reader)
       ifprintf(f, "No global mode errors found.\n");
 }
 
+void Schema::print_effective_srm(FILE *f, SpecsReader *reader)
+{
+   SFW_Resources sfwr(*reader);
+
+   auto cb_with_mode = [&f](const ab_handle *mode)
+   {
+      mode->dump(f);
+   };
+   Generic_User_Const_Pointer<ab_handle, decltype(cb_with_mode)> user(cb_with_mode);
+
+   auto cb = [&f, &reader, &sfwr, &user](const Advisor_Index::ninfo *mode) -> bool
+   {
+      const auto &obj = mode->object();
+      const char *tag = mode->str();
+      const char *value = obj.value();
+
+      if (obj.has_children())
+      {
+         if (obj.is_external())
+            ifprintf(f, "# Mode %s Unavailable (%s:%ld).\n",
+                     tag, obj.m_filepath, obj.m_position);
+         else
+            reader->build_branch(obj.m_position, user);
+      }
+      else
+      {
+         if (value)
+            ifprintf(f, "%s : %s\n", tag, value);
+         else
+            ifprintf(f, "%s\n", tag);
+      }
+
+      ifputc('\n',f);
+
+      return true;
+   };
+
+   reader->scan_handles(cb);
+}
+
 /** @} */
 
 /**
@@ -1232,6 +1272,7 @@ static const Schema::dapair g_debug_action_types[] = {
    {"all-modes", Schema::DEBUG_ACTION_PRINT_ALL_MODES},
    {"types", Schema::DEBUG_ACTION_PRINT_MODE_TYPES},
    {"lint", Schema::DEBUG_ACTION_LINT},
+   {"list", Schema::DEBUG_ACTION_LIST},
    {nullptr, Schema::DEBUG_ACTION_IGNORE}
 };
 
@@ -1659,6 +1700,8 @@ void Schema::get_resources_from_environment(FILE *out)
             return schema.m_specsreader->print_modes(stderr, true);
          case DEBUG_ACTION_LINT:
             return schema.print_lint(stderr, schema.m_specsreader);
+         case DEBUG_ACTION_LIST:
+            return schema.print_effective_srm(stderr, schema.m_specsreader);
          default: break;
       }
       
