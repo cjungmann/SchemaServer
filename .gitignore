@@ -1,6 +1,8 @@
 Makefile
 *.o
 schema.fcgi
+Doxyfile
+html
 
 test/generated/
 test/setup/SchemaServer_Test.conf
