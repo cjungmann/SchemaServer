@@ -242,15 +242,14 @@ void Advisor_Index::t_collect_modes(Advisor &advisor,
          set_vars(advisor.tag(), advisor.value());
          ninfo* node = ninfo::init_handle(alloca(len_node),name,len_extra,nullptr);
          set_ninfo(node,false);
+         Advisor_Index::info &ai_info = node->object();
 
          advisor.get_next_line();
 
          // Modes without children do not need to save a filepath
          // because the mode contains all the available information:
-         if (advisor.level() > 0)
-            node->object().m_has_children = true;
-         else
-            node->object().m_filepath = nullptr;
+         ai_info.m_has_children = (advisor.level() > 0);
+         ai_info.m_filepath = ai_info.m_has_children ? filepath : nullptr;
 
          bends.append(node);
       }
