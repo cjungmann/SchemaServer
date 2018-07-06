@@ -126,6 +126,15 @@ public:
       {
       }
    }
+
+   template <class Func>
+   inline void scan_handles(const Func &f) const
+   {
+      for (const auto* ptr = m_ds.start();
+           ptr && f(ptr);
+           ptr = ptr->next())
+         ;
+   }
      
    
    long int position(const char *name, const char *value=nullptr) const;
@@ -327,6 +336,9 @@ public:
 
    template <class Func>
    inline void scan_modes(const Func &f) const { m_index.scan(f); }
+
+   template <class Func>
+   inline void scan_handles(const Func &f) const { m_index.scan_handles(f); }
 
    long int get_advisor_position(void) const { return m_advisor.get_position(); }
    void restore_advisor_position(long int pos) { m_advisor.restore_state(pos); }
