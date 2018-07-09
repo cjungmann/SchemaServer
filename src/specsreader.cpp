@@ -172,7 +172,13 @@ void Advisor_Index::BEnds::scan_for_includes(Path_List &pl,
  * @brief Scan entire Advisor file to make a list of modes (column-0 instructions)
  *
  * This function will simply collects modes, passing the resultant head and
- * tail modes to the callback function for continued processing.
+ * tail modes to the callback function for continued processing.  When it's finished
+ * collecting modes, it call invoke the callback function which is a lambda function
+ * in t_build_new that visits each mode to recursively scan includes.
+ *
+ * A new addition is to prepend a generated include instruction if the file
+ * *autorun.srm* is found in the directory.  Its contents will be parsed during
+ * the subsequent includes-scanning step.
  *
  * If BEnds::scan_for_includes finds an $include instruction, it will call
  * t_collect_include_modes(), which will in turn call this function with the
