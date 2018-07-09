@@ -483,9 +483,8 @@ void ab_handle::dump(FILE *out, bool include_refs, int indent, bool is_parent) c
    ifputs(tag(), out);
    if (is_setting())
    {
-      ifputs(" : \"", out);
+      ifputs(" : ", out);
       print_value(out, false);
-      ifputc('"', out);
    }
    ifputc('\n', out);
 
