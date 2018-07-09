@@ -641,13 +641,13 @@ public:
    static void replace_all_shared_refs(ab_handle *head, ab_handle *branch, bool skip_siblings=false);
    static void reconcile_shares(ab_handle *head);
 
-   void t_build_branch(long int position, abh_callback &callback) const;
+   void t_build_branch(long int position, abh_callback &callback, Advisor *alt_advisor=nullptr) const;
    /** @brief Template function calling t_build_branch() with appropriate callback class. */
    template <class Func>
-   void build_branch(long int position, const Func &func) const
+   void build_branch(long int position, const Func &func, Advisor *alt_advisor=nullptr) const
    {
       Generic_User_Const_Pointer<ab_handle, Func> user(func);
-      t_build_branch(position, user);
+      t_build_branch(position, user, alt_advisor);
    }
 
 

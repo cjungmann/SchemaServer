@@ -778,26 +778,26 @@ void SpecsReader::reconcile_shares(ab_handle *head)
  * -# The level value of the mode head is known to be zero, so we're using
  *    it here to count the number of shared references in the mode.
  */
-void SpecsReader::t_build_branch(long position, abh_callback &callback) const
+void SpecsReader::t_build_branch(long position, abh_callback &callback, Advisor *alt_advisor) const
 {
-   Advisor &adv = m_advisor;
+   Advisor *p_adv = alt_advisor ? alt_advisor : &m_advisor;
    ab_handle *head = nullptr;
    ab_handle *tail = nullptr;
-   long saved_position = m_advisor.end() ? -1 : m_advisor.get_position();
+   long saved_position = p_adv->end() ? -1 : p_adv->get_position();
    int shared_count;
 
    // The mode chain is a list linked via the m_sibling member;
    ab_handle *mode_chain_link = nullptr;
    ab_handle *mode_chain_tail = nullptr;
 
-   adv.restore_state(position);
+   p_adv->restore_state(position);
 
    // We have to make the main mode separately to setup the loop:
-   head = tail = make_handle(alloca(len_handle(adv)), adv, nullptr);
+   head = tail = make_handle(alloca(len_handle(*p_adv)), *p_adv, nullptr);
    shared_count = 0;
-   while(adv.get_next_line() && adv.level()>0)
+   while(p_adv->get_next_line() && p_adv->level()>0)
    {
-      tail = make_handle(alloca(len_handle(adv)), adv, tail);
+      tail = make_handle(alloca(len_handle(*p_adv)), *p_adv, tail);
       if (tail->is_shared_ref())
          ++shared_count;
    }
@@ -814,9 +814,9 @@ void SpecsReader::t_build_branch(long position, abh_callback &callback) const
    }
 
    int saved_handle = -1;
-   auto f_prep_advisor = [this, &saved_handle](const Advisor_Index::ninfo *p) -> bool
+   auto f_prep_advisor = [&p_adv, &saved_handle](const Advisor_Index::ninfo *p) -> bool
    {
-      // Ensure code always resets m_advisor file handle to its original value:
+      // Ensure code always resets Advisor file handle to its original value:
       if (saved_handle!=-1)
          throw std::runtime_error("Error: parked saved_handle value.");
       
@@ -837,19 +837,19 @@ void SpecsReader::t_build_branch(long position, abh_callback &callback) const
             throw std::runtime_error("failed to open file");
          }
          else
-            saved_handle = m_advisor.replace_handle(handle);
+            saved_handle = p_adv->replace_handle(handle);
       }
 
-      m_advisor.restore_state(pos);
+      p_adv->restore_state(pos);
 
       return true;
    };
 
-   auto f_drop_advisor = [this, &saved_handle](void)
+   auto f_drop_advisor = [&p_adv, &saved_handle](void)
    {
       if (saved_handle>-1)
       {
-         int handle_to_close = m_advisor.replace_handle(saved_handle);
+         int handle_to_close = p_adv->replace_handle(saved_handle);
          close(handle_to_close);
          saved_handle = -1;
       }
@@ -888,13 +888,13 @@ void SpecsReader::t_build_branch(long position, abh_callback &callback) const
 
                if (f_prep_advisor(amode))
                {
-                  void *buff = alloca(len_shared_handle(adv));
-                  ab_handle *shead = make_shared_handle(buff, adv, nullptr);
+                  void *buff = alloca(len_shared_handle(*p_adv));
+                  ab_handle *shead = make_shared_handle(buff, *p_adv, nullptr);
                   ab_handle *stail = shead;
 
-                  while(adv.get_next_line() && adv.level()>0)
+                  while(p_adv->get_next_line() && p_adv->level()>0)
                   {                     
-                     stail = make_handle(alloca(len_handle(adv)), adv, stail);
+                     stail = make_handle(alloca(len_handle(*p_adv)), *p_adv, stail);
                      if (stail->is_shared_ref())
                         ++shared_count;
                   }
@@ -925,7 +925,7 @@ void SpecsReader::t_build_branch(long position, abh_callback &callback) const
    callback(head);
 
    if (saved_position>=0)
-      adv.restore_state(saved_position);
+      p_adv->restore_state(saved_position);
 }
 
 /** @brief Used to assert a valid position.  Shouldn't be used in production code. */
