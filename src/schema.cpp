@@ -214,6 +214,13 @@ void Schema::print_lint(FILE *f, const SpecsReader *reader)
       ifprintf(f, "No global mode errors found.\n");
 }
 
+/**
+ * @brief Write the contents of all the modes.
+ *
+ * Like debug option *all-modes*, this function processes each mode, global,
+ * shared, or normal.  However, this function will write out the reconciled
+ * mode contents as well as the mode name.
+ */
 void Schema::print_effective_srm(FILE *f, SpecsReader *reader)
 {
    SFW_Resources sfwr(*reader);
@@ -233,8 +240,15 @@ void Schema::print_effective_srm(FILE *f, SpecsReader *reader)
       if (obj.has_children())
       {
          if (obj.is_external())
-            ifprintf(f, "# Mode %s Unavailable (%s:%ld).\n",
-                     tag, obj.m_filepath, obj.m_position);
+         {
+            auto f_afile_handle = [&reader, &user, &obj](AFile_Handle &afh)
+            {
+               Advisor temp_advisor(afh);
+               reader->build_branch(obj.m_position, user, &temp_advisor);
+            };
+            
+            AFile_Handle::build(obj.filepath(), f_afile_handle);
+         }
          else
             reader->build_branch(obj.m_position, user);
       }
@@ -1693,15 +1707,15 @@ void Schema::get_resources_from_environment(FILE *out)
       switch(schema.s_debug_action)
       {
          case DEBUG_ACTION_PRINT_MODE_TYPES:
-            return schema.print_mode_types(stderr);
+            return schema.print_mode_types(stdout);
          case DEBUG_ACTION_PRINT_RESPONSE_MODES:
-            return schema.m_specsreader->print_modes(stderr, false);
+            return schema.m_specsreader->print_modes(stdout, false);
          case DEBUG_ACTION_PRINT_ALL_MODES:
-            return schema.m_specsreader->print_modes(stderr, true);
+            return schema.m_specsreader->print_modes(stdout, true);
          case DEBUG_ACTION_LINT:
-            return schema.print_lint(stderr, schema.m_specsreader);
+            return schema.print_lint(stdout, schema.m_specsreader);
          case DEBUG_ACTION_LIST:
-            return schema.print_effective_srm(stderr, schema.m_specsreader);
+            return schema.print_effective_srm(stdout, schema.m_specsreader);
          default: break;
       }
       
@@ -2621,7 +2635,7 @@ void Schema::process_response_mode(void)
    }
 
    if (s_debug_action==DEBUG_ACTION_PRINT_MODE)
-      return m_mode->dump(stderr, false);
+      return m_mode->dump(stdout, false);
    
    m_type_value = value_from_mode("type");
    m_mode_action = get_mode_type(m_type_value);
