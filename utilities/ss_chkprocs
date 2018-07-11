@@ -1,0 +1,53 @@
+#!/bin/bash
+
+declare -a SRMLIST=( $(ls -l *.srm) )
+
+confirm_proc_exists()
+{
+    local dbname="$1"
+    local proc_name="$2"
+    local -i pcount=0
+    local query="\
+SELECT COUNT(*)
+  FROM ROUTINES \
+ WHERE ROUTINE_SCHEMA='${dbname}' \
+   AND ROUTINE_NAME='${proc_name}'"
+ 
+    pcount=$( mysql -Ns information_schema -e "${query}" )
+
+    # Ending with test "returns" the test result:
+    [ $pcount -ne 0 ]
+}
+
+check_srm()
+{
+    local srmfile=$1
+    local recon=$( schema.fcgi "$srmfile" -d list )
+
+    local -a dbarr=( $( echo "${recon}" | awk -F ":" '/database/ { print $2 }' - ) )
+    local dbname="${dbarr[0]}"
+
+    local -a proc_refs
+    proc_refs=( $( echo "${recon}" | awk -F ":" '/schema-proc|procedure/ { print $2 }' - | sort -u - ) )
+
+    local proc
+    local -i number_missing=0
+    for proc in "${proc_refs[@]}"; do
+        confirm_proc_exists "${dbname}" "${proc}"
+        if [ $? -ne 0 ]; then
+            echo "Database ${dbname} missing procedure '${proc}'"
+            (( ++number_missing ))
+        fi
+    done;
+
+    if [ $number_missing -eq 0 ]; then
+        echo "All procedures from $srmfile were found in $dbname"
+    fi
+
+    echo
+}
+
+for srm in "${SIMLIST[@]}"; do
+    echo "In SRM script file '$srm'"
+    check_srm "$srm"
+done

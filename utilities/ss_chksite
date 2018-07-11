@@ -1,0 +1,136 @@
+#!/bin/bash
+
+declare FSEP="#"
+declare RSEP="^"
+
+declare -a ARR_CONFS
+declare -a TARGET_CONF
+declare -i COUNT_CONFS
+
+declare -a SRM_DEFAULT_MODES
+declare HOSTNAME SRM_FILE SRM_MODE
+
+add_enabled_site_to_array()
+{
+    path="$1"
+    local fstr=$( cat "$path" )
+    local sname droot dirndx recstr
+    local -a recarr
+
+    sname=$( echo "$fstr" | awk '/^ *ServerName/ { print $2 }' - )
+    droot=$( echo "$fstr" | awk '/^ *DocumentRoot/ { print $2 }' - )
+    dirndx=$( echo "$fstr" | awk '/^ *DirectoryIndex/ { print $2 }' - )
+
+    if [ -n "$sname" -a -n "$droot" ]; then
+        recarr=( "${sname}" "${droot}" )
+        if [ -n "$dirndx" ]; then
+            recarr=( "${recarr[@]}" "${dirndx}" )
+        fi
+
+        local IFS='${FSEP}'
+        ARR_CONFS=( "{ARR_CONFS[@]}" "${recarr[*]}" )
+        
+        if [ "$droot" = "$PWD" ]; then
+            TARGET_CONF=( "${sname}" "${droot}" "${dirndx}" )
+        fi
+    fi
+}
+
+get_enabled_sites_array_str()
+{
+    local IFS=$'\n'
+    local -a srms=( $( ls -1 /etc/apache2/sites-enabled/*.conf ) )
+
+    local srm
+    for srm in "${srms[@]}"; do
+        get_enabled_site_array_str "$srm"
+    done
+}
+
+
+get_global_confs_arr()
+{
+    local IFS=$'\n'
+    local -a srms=( $( ls -1 /etc/apache2/sites-enabled/*.conf ) )
+    local srm
+    for srm in "${srms[@]}"; do
+        add_enabled_site_to_array "$srm"
+    done
+    COUNT_CONFS=${#ARR_CONFS[@]}
+}
+
+pick_target_conf()
+{
+    local IFS="${FSEP}"
+    local -a arrc
+    local confstr
+    local -i choice ndx=0
+
+    TARGET_CONF=
+
+    echo
+    echo "Select the target site from the following list:"
+
+    for confstr in "${ARR_CONFS[@]}"; do
+        arrc=( $( echo "${confstr}" ) ) 
+        echo "$(( ++ndx )) ${arrc[0]}"
+    done
+
+    echo
+    read -p "Enter a number and press enter. " choice
+    if [ $choice -le $ndx -a $choice -gt 0 ]; then
+        TARGET_CONF=( $( echo "${ARR_CONFS[$choice-1]}" ) )
+        return 0
+    fi
+
+    return 1
+}
+
+process_target_conf()
+{
+    local shost="${TARGET_CONF[0]}"
+    local spath="${TARGET_CONF[1]}"
+    local sindx
+    if [ "${#TARGET_CONF[@]}" -gt 2 ]; then
+        sindx="${TARGET_CONF[2]}"
+    fi
+    
+    cd "${spath}"
+    SRM_FILES=( $( ls -1 *.srm ) )
+    # ignore OLDPWD output for cd:
+    cd - > /dev/null
+
+    local IFS="$FSEP"
+    local haystack="${IFS:0:1}${SRM_FILES[*]}${IFS:0:1}"
+    local needle="${IFS:0:1}${sindx}${IFS:0:1}"
+
+    if [[ -n "$sindx" && (${haystack} =~ ${needle}) ]]; then
+        test_site "${shost}" "${sindx}"
+    else
+        echo "Unable to find script,  '$sindx'"
+    fi
+}
+
+get_global_confs_arr
+
+if [ $COUNT_CONFS -eq 0 ]; then
+    echo "No apache sites enabled, exiting."
+    exit 1
+elif [ $COUNT_CONFS -eq 1 ]; then
+    TARGET_CONF=( $( echo "${ARR_CONFS[0]}" ) )
+fi
+
+if [ "${#TARGET_CONF[@]}" -eq 0 ]; then
+    pick_target_conf
+fi
+
+# Check again in case pick_target_conf was abandoned before making choice.
+if [ "${#TARGET_CONF[@]}" -gt 0 ]; then
+    process_target_conf
+fi
+
+
+
+
+
+

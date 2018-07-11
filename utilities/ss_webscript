@@ -1,0 +1,72 @@
+#!/bin/bash
+
+declare shost="$1"
+declare srmfile="$2"
+
+declare -a YAD_OPTS=(
+    --title "wget result"
+    --height 600
+    --width 800
+    )
+
+declare -a WGET_OPTS=(
+    -q                      # quiet mode
+    # -S                      # print server response headers
+    -O -                    # output to stdout
+    --header "Host: $shost" # spoof the hostname
+)
+declare -a options pdata yadopts
+declare xmlresult
+
+declare ZPATH
+
+get_source_path()
+{
+    # Must include both the colon AND the space to trim
+    # the spaces from the path in the array:
+    local IFS=": "
+    local -a arr=( $( whereis gensfw ) )
+    ZPATH=$( readlink "${arr[1]}" )
+    ZPATH="${zpath%%gensfw}"
+}
+
+get_source_path
+
+show_default_page()
+{
+    local -a options yadopts
+    local xmlresult
+    options=( "http://localhost/${srmfile}" "${WGET_OPTS[@]}" )
+    xmlresult=$( wget "${options[@]}" )
+    yadopts=( "${YAD_OPTS[@]}" $( echo "${xmlresult}" | xsltproc "$ZPATH"/test.xsl - ) )
+    yad "${yadopts[@]}"
+}
+
+show_default_page
+
+
+# echo
+# pdata=( "list" )
+# echo "Get default page (a list page)"
+
+# # echo "Get add form parameters:"
+# options=( "http://localhost/Person.srm?add" "${WGET_OPTS[@]}" )
+
+# pdata=( "add" )
+# xmlresult=$( wget "${options[@]}" --post-data="${pdata[*]}" )
+# echo "${xmlresult}" | xsltproc test.xsl -
+
+
+# echo "Add a person record"
+
+# pdata=("fname=Chuck"
+#        "lname=Jungmann"
+#        "dob=1960-04-21" )
+
+# options=( "http://localhost/Person.srm?add_submit" "${WGET_OPTS[@]}" )
+# xmlresult=$( wget "${options[@]}" --post-data="${pdata[*]}" )
+# echo "${xmlresult}" | xsltproc test.xsl -
+
+# options=( "http://localhost/Person.srm" "${WGET_OPTS[@]}" )
+# xmlresult=$( wget "${options[@]}" )
+# echo "${xmlresult}" | xsltproc test.xsl -
