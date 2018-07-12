@@ -35,7 +35,7 @@ define install_utilities
 	install -D --mode=755 ../utilities/ss_chkprocs             /usr/local/lib/SchemaServer/utilities/ss_chkprocs
 	install -D --mode=755 ../utilities/ss_chksite              /usr/local/lib/SchemaServer/utilities/ss_chksite
 	install -D --mode=755 ../utilities/ss_webscript            /usr/local/lib/SchemaServer/utilities/ss_webscript
-	install -D --mode=755 ../utilities/test.xsl                /usr/local/lib/SchemaServer/utilities/test.xsl
+	install -D --mode=644 ../utilities/test.xsl                /usr/local/lib/SchemaServer/utilities/test.xsl
 	cp -sf /usr/local/lib/SchemaServer/utilities/ss_chkprocs   /usr/bin/ss_chkprocs
 	cp -sf /usr/local/lib/SchemaServer/utilities/ss_chksite    /usr/bin/ss_chksite
 	cp -sf /usr/local/lib/SchemaServer/utilities/ss_webscript  /usr/bin/ss_webscript
