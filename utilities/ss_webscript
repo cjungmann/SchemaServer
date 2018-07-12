@@ -22,15 +22,15 @@ declare ZPATH
 
 get_source_path()
 {
+    local script_name="ss_chksite"
+
     # Must include both the colon AND the space to trim
     # the spaces from the path in the array:
     local IFS=": "
-    local -a arr=( $( whereis gensfw ) )
+    local -a arr=( $( whereis $script_name ) )
     ZPATH=$( readlink "${arr[1]}" )
-    ZPATH="${zpath%%gensfw}"
+    ZPATH="${ZPATH%%${script_name}}"
 }
-
-get_source_path
 
 show_default_page()
 {
@@ -42,6 +42,8 @@ show_default_page()
     yad "${yadopts[@]}"
 }
 
+
+get_source_path
 show_default_page
 
 
