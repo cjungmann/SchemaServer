@@ -3,6 +3,11 @@
 declare FSEP="#"
 declare RSEP="^"
 
+# see: man tput
+# see: man 4 console_codes
+declare CSI='\003['
+declare CLRSCR="${CSI}2J"
+
 declare -a ARR_CONFS
 declare -a TARGET_CONF
 declare -i COUNT_CONFS
@@ -10,6 +15,13 @@ declare -i COUNT_CONFS
 declare -a SRM_DEFAULT_MODES
 declare HOSTNAME SRM_FILE SRM_MODE
 
+# Scan configuration file to collect ServerName, DocumentRoot, and
+# DirectoryIndex settings into a delimited string which is saved to
+# the global ARR_CONFS array.
+#
+# If the PWD matches the DocumentRoot value for a site, the
+# TARGET_CONF global array is initialised to the values of the 
+# matching site.
 add_enabled_site_to_array()
 {
     path="$1"
@@ -27,8 +39,8 @@ add_enabled_site_to_array()
             recarr=( "${recarr[@]}" "${dirndx}" )
         fi
 
-        local IFS='${FSEP}'
-        ARR_CONFS=( "{ARR_CONFS[@]}" "${recarr[*]}" )
+        local IFS="${FSEP}"
+        ARR_CONFS=( "${ARR_CONFS[@]}" "${recarr[*]}" )
         
         if [ "$droot" = "$PWD" ]; then
             TARGET_CONF=( "${sname}" "${droot}" "${dirndx}" )
@@ -36,19 +48,12 @@ add_enabled_site_to_array()
     fi
 }
 
-get_enabled_sites_array_str()
-{
-    local IFS=$'\n'
-    local -a srms=( $( ls -1 /etc/apache2/sites-enabled/*.conf ) )
-
-    local srm
-    for srm in "${srms[@]}"; do
-        get_enabled_site_array_str "$srm"
-    done
-}
-
-
-get_global_confs_arr()
+# Cycles through *.conf apache files, calling add_enabled_site_to_array
+# with each to collect the sites' configurations.
+#
+# Since the count of sites is mulitple times used as a flag, the
+# COUNT_CONFS global integer is set when the array is complete.
+apache_enabled_sites_to_global_array()
 {
     local IFS=$'\n'
     local -a srms=( $( ls -1 /etc/apache2/sites-enabled/*.conf ) )
@@ -59,6 +64,59 @@ get_global_confs_arr()
     COUNT_CONFS=${#ARR_CONFS[@]}
 }
 
+
+show_srm_options()
+{
+    local host=$1
+    local page=$2
+
+    ss_webscript $host $page
+
+    # tput clear
+    # echo
+    # echo "Show options for http://${host}?${page}"
+    # read -p "Press any key to return"
+}
+
+collect_target_conf_srm_files()
+{
+    local hostname="${TARGET_CONF[0]}"
+    local swd="${TARGET_CONF[1]}"
+    local -a srmarr
+    cd "$swd"
+    srmarr=( $( ls -1 *.srm ) )
+    cd - > /dev/null
+
+    local -i ndx=0
+    local srm choice
+
+    while true; do
+        tput clear
+        echo
+        echo "Select a SRM file from the following list:"
+        echo
+
+        ndx=0
+        for srm in "${srmarr[@]}"; do
+            echo "$(( ++ndx )). $srm"
+        done
+
+        echo
+        read -p "Type 1 - $ndx, or 0 to exit. " choice
+        if [ $choice -lt 0 -o $choice -gt $ndx ]; then
+            echo "Selection out-of-range."
+            return 1
+        elif [ $choice -eq 0 ]; then
+            return 0
+        else
+            show_srm_options "$hostname" "${srmarr[$choice-1]}"
+        fi
+    done
+}
+
+# Builds an indexed table of enabled sites, waiting for a user
+# response.  If a valid site is selected, the global TARGET_CONF
+# array is set with that site's values.
 pick_target_conf()
 {
     local IFS="${FSEP}"
@@ -68,8 +126,10 @@ pick_target_conf()
 
     TARGET_CONF=
 
+    tput clear
     echo
     echo "Select the target site from the following list:"
+    echo
 
     for confstr in "${ARR_CONFS[@]}"; do
         arrc=( $( echo "${confstr}" ) ) 
@@ -77,13 +137,21 @@ pick_target_conf()
     done
 
     echo
-    read -p "Enter a number and press enter. " choice
-    if [ $choice -le $ndx -a $choice -gt 0 ]; then
+    read -p "Enter a number from 1 to $ndx and press enter.  Press 0 to quit: " choice
+
+    if [ $choice -eq 0 ]; then
+        return 1
+    elif [ $choice -gt $ndx -o $choice -lt 0]; then
+        return 2
+    else
         TARGET_CONF=( $( echo "${ARR_CONFS[$choice-1]}" ) )
         return 0
     fi
+}
 
-    return 1
+process_site_choice()
+{
+    collect_target_conf_srm_files
 }
 
 process_target_conf()
@@ -111,22 +179,29 @@ process_target_conf()
     fi
 }
 
-get_global_confs_arr
+apache_enabled_sites_to_global_array
 
 if [ $COUNT_CONFS -eq 0 ]; then
     echo "No apache sites enabled, exiting."
     exit 1
 elif [ $COUNT_CONFS -eq 1 ]; then
     TARGET_CONF=( $( echo "${ARR_CONFS[0]}" ) )
+    echo "Processing the only available site."
+    process_site_choice
 fi
 
-if [ "${#TARGET_CONF[@]}" -eq 0 ]; then
-    pick_target_conf
-fi
-
-# Check again in case pick_target_conf was abandoned before making choice.
-if [ "${#TARGET_CONF[@]}" -gt 0 ]; then
-    process_target_conf
+# Run as application if sites found and not in PWD:
+declare -i exval
+if [ $COUNT_CONFS -gt 1 ]; then
+    while true; do
+        pick_target_conf
+        exval=$?
+        case $exval in
+            0) process_site_choice ;;
+            1) exit 0 ;;
+            2) echo "Index selected out-of-range." ;;
+        esac
+    done
 fi
 
 
