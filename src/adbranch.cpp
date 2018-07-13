@@ -539,7 +539,7 @@ void SiblingWalker::first_good_line(const ab_handle *candidate)
    while (!m_cur && candidate)
    {
       // Special setup for a siblings-branch:
-      if (candidate->is_siblings_branch())
+      if (candidate->is_siblings_branch() || candidate->is_autoload_tag())
       {
          // Use the current siblings-branch if has children,
          // saving it's sibling for when its contents have been
