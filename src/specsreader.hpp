@@ -432,9 +432,22 @@ public:
       return get_mode_position("$shared", ++name);
    }
 
-   const t_handle<Advisor_Index::info>* get_shared_advisor_mode(const char *name) const
+   const t_handle<Advisor_Index::info>* get_shared_advisor_mode(const ab_handle *ref) const
    {
-      return seek_advisor_mode("$shared", ++name);
+      const char *target = ref->value();
+
+      if (ref->is_autoload_tag())
+      {
+         char *buff =static_cast<char*>(alloca(strlen(target)+10));
+         strcpy(buff, "autoload_");
+         strcpy(&buff[9], ref->value());
+         target = buff;
+      }
+      else
+         // Skip the '$';
+         ++target;
+
+      return seek_advisor_mode("$shared", target);
    }
 
    /**
@@ -635,7 +648,7 @@ public:
    }
 
    
-   static ab_handle *find_shared_link(ab_handle *mode_chain_head, const char *name);
+   static ab_handle *find_shared_link(ab_handle* mode_chain_head, const ab_handle* ref);
    
    static void replace_shared_ref(ab_handle *head, ab_handle *ref);
    static void replace_all_shared_refs(ab_handle *head, ab_handle *branch, bool skip_siblings=false);

@@ -657,13 +657,24 @@ void SpecsReader::seek_specs_handle(const char *tag,
  * As in other building functions, next_sibling() should be used instead
  * of SiblingWalker: the links that SiblingWalker uses aren't established yet.
  */
-ab_handle *SpecsReader::find_shared_link(ab_handle *mode_chain_head, const char *name)
+ab_handle *SpecsReader::find_shared_link(ab_handle* mode_chain_head,
+                                         const ab_handle* ref)
 {
-   // Skip the '$';
-   ++name;
+   const char *target = ref->value();
+
+   if (ref->is_equal_to("autoload_tag"))
+   {
+      char *buff =static_cast<char*>(alloca(strlen(target)+10));
+      strcpy(buff, "autoload_");
+      strcpy(&buff[9], ref->value());
+      target = buff;
+   }
+   else
+      // Skip the '$';
+      ++target;
 
    ab_handle *ptr = mode_chain_head->next_sibling();
-   while (ptr && !ptr->is_equal_to(name))
+   while (ptr && !ptr->is_equal_to(target))
       ptr = ptr->next_sibling();
  
    return ptr;
@@ -671,7 +682,7 @@ ab_handle *SpecsReader::find_shared_link(ab_handle *mode_chain_head, const char 
 
 void SpecsReader::replace_shared_ref(ab_handle *head, ab_handle *ref)
 {
-   ab_handle *link = find_shared_link(head, ref->value());
+   ab_handle *link = find_shared_link(head, ref);
    if (link)
    {
       ref->set_child(link->first_child());
@@ -708,7 +719,7 @@ void SpecsReader::replace_all_shared_refs(ab_handle *head, ab_handle *branch, bo
       ab_handle *sibling = branch->next_sibling();
       if (sibling)
       {
-         if (sibling->is_shared_ref())
+         if (sibling->is_shared_ref() || sibling->is_autoload_tag())
             replace_shared_ref(head, sibling);
          replace_all_shared_refs(head, sibling);
       }
@@ -798,7 +809,7 @@ void SpecsReader::t_build_branch(long position, abh_callback &callback, Advisor 
    while(p_adv->get_next_line() && p_adv->level()>0)
    {
       tail = make_handle(alloca(len_handle(*p_adv)), *p_adv, tail);
-      if (tail->is_shared_ref())
+      if (tail->is_shared_ref() || tail->is_equal_to("autoload_tag"))
          ++shared_count;
    }
 
@@ -865,25 +876,23 @@ void SpecsReader::t_build_branch(long position, abh_callback &callback, Advisor 
       ab_handle *ptr = mode_chain_link;
       while(ptr && shared_countdown)
       {
-         if (ptr->is_shared_ref())
+         if (ptr->is_shared_ref() || ptr->is_autoload_tag())
          {
             --shared_countdown;
 
-            const char *pvalue = ptr->value();
-
             // Only get the first reference to the share:
-            if (!find_shared_link(head, pvalue))
+            if (!find_shared_link(head, ptr))
             {
                shared_count = 0;
 
-               auto *amode = get_shared_advisor_mode(pvalue);
+               auto *amode = get_shared_advisor_mode(ptr);
 
                if (!amode)
                {
-                  if (strncmp(pvalue,"$autoload_",10)==0)
+                  if (ptr->is_autoload_tag())
                      continue;
                   else
-                     throw_missing("shared reference", pvalue);
+                     throw_missing("shared reference", ptr->value());
                }
 
                if (f_prep_advisor(amode))
@@ -895,7 +904,7 @@ void SpecsReader::t_build_branch(long position, abh_callback &callback, Advisor 
                   while(p_adv->get_next_line() && p_adv->level()>0)
                   {                     
                      stail = make_handle(alloca(len_handle(*p_adv)), *p_adv, stail);
-                     if (stail->is_shared_ref())
+                     if (stail->is_shared_ref() || stail->is_autoload_tag())
                         ++shared_count;
                   }
                   // Link nodes before setting level of the head:
