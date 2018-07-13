@@ -45,8 +45,13 @@ confirm_referenced_procedures()
     declare DBNAME=$( get_srm_database )
     local -i missing=0
 
+    echo "Testing database '$DBNAME' for SRM-references procdures." >&2
+
     local -a procs_array
     procs_array=( $( awk -F ":" '/schema-proc|procedure/ { print $2 }' "$srmfile" | sort -u - ) )
+
+    echo "About to check for the following procedures:"
+    printf "'%s'\n" "${procs_array[@]}"
 
     local proc
     for proc in "${procs_array[@]}"; do
