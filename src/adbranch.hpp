@@ -110,6 +110,7 @@ public:
    inline bool is_setting(void) const          { return has_value(); }
    inline bool is_shared_ref(void) const       { return *value()=='$'; }
    inline bool is_siblings_branch(void) const  { return 0==strcmp(tag(),"siblings"); }
+   inline bool is_autoload_tag(void) const     { return 0==strcmp(tag(),"autoload_tag"); }
 
    /**
     * @brief Returns a pointer to the last character in value.
@@ -335,6 +336,7 @@ public:
    inline bool has_value(void) const             { return m_cur->has_value(); }
    inline bool has_children(void) const          { return m_cur->has_children(); }
    inline bool is_siblings_branch(void) const    { return m_cur->is_siblings_branch(); }
+   inline bool is_autoload_tag(void) const       { return m_cur->is_autoload_tag(); }
    inline bool is_section(void) const            { return m_cur->is_section(); }
    inline bool is_setting(void) const            { return m_cur->is_setting(); }
    inline bool is_tag(const char *str) const     { return m_cur->is_tag(str); }
