@@ -41,9 +41,11 @@ define install_utilities
 	cp -sf /usr/local/lib/SchemaServer/utilities/ss_webscript  /usr/bin/ss_webscript
 endef
 
-define install_manpages
-	cp ../man/schema.fcgi.1                      /usr/share/man/man1
-	cp ../man/schema.fcgi.7                      /usr/share/man/man7
+define install_documentation
+	makeinfo ../offline_docs/schema.fcgi.txi --paragraph-indent=0 -o /usr/share/info
+	cp ../offline_docs/schema.fcgi.1            /usr/share/man/man1
+	cp ../offline_docs/schema.fcgi.7            /usr/share/man/man7
+	gzip -f /usr/share/info/schema.fcgi.info
 	gzip -f /usr/share/man/man1/schema.fcgi.1
 	gzip -f /usr/share/man/man7/schema.fcgi.7
 endef
@@ -117,20 +119,20 @@ install:
 	install -D --mode=644 ../LICENSE             /usr/share/doc/SchemaServer
 	# install executable and make link
 	install -D --mode=755 schema.fcgi            /usr/local/lib/cgi-bin/schema.fcgi
-	cp -sf /usr/local/lib/cgi-bin/schema.fcgi     /usr/bin/schema.fcgi
+	cp -sf /usr/local/lib/cgi-bin/schema.fcgi    /usr/bin/schema.fcgi
 
 	install -D --mode=644 ../install/sys_procs.sql  /usr/local/lib/SchemaServer/install/sys_procs.sql
 	cp -r ../install/ods                         /usr/local/lib/SchemaServer/install
-	# install man pages:
-	$(call install_manpages)
+	# install man and info:
+	$(call install_documentation)
 	# install utilities
 	$(call install_utilities)
 	# Prepare Apache to recognize schema.fcgi as a document handler
 	install -D --mode=644 ../install/SchemaServer.conf /etc/apache2/conf-available/SchemaServer.conf
 	a2enconf SchemaServer
 
-update-man-pages:
-	$(call install_manpages)
+update-documentation:
+	$(call install_documentation)
 
 update-utilities:
 	$(call install_utilities)
