@@ -1,0 +1,346 @@
+\input texinfo
+@setfilename schema.fcgi
+@settitle Using SchemaServer
+
+@copying
+Offline Manual for SchemaServer
+
+Copyright @copyright{} 2018 Charles P Jungmann
+@end copying
+
+@titlepage
+@title Using SchemaServer
+@author Charles P. Jungmann
+@page
+@insertcopying
+@end titlepage
+
+
+@ifnottex
+@node Top
+@top Using SchemaServer
+
+This manual is an offline reference for the SchemaServer component,
+@code{schema.fcgi}.  Included in this manual are instructions for
+installing and testing @code{schema.fcgi}, SRM script syntax usage
+and examples, and command line options for debugging scripts.
+
+I apologize to anyone finding this manual who hopes for a comprehensive
+treatment in the use of SchemaServer.  I began this manual to create
+@emph{offline} documentation that I can refer to when I need a
+reminder of syntax or usage.
+
+I expect to be slowly adding content to this manual.  At first, it
+will be documentation about features I had some trouble remembering.
+The manual will be fleshed out more quickly if the software gains
+wider use to support the new users.
+@end ifnottex
+
+@contents
+@menu
+* Introduction::
+* SRM Scripts::               Define and describe SRM files
+* Shared Elements::           Define once and use multiple times
+* Autoload::                  Using Autoload Feature
+@end menu
+
+@node Introduction
+@chapter Introduction
+
+SchemaServer is a FastCGI component that, under the direction of simple
+scripts files, serves XML documents from MySQL procedure results in
+response to HTTP requests.
+
+@node SRM Scripts
+@chapter SRM Scripts
+
+@acronym{SRM, Schema Response Mode} script files contain tree-like
+hierarchical text that inform @command{schema.fcgi} how to process
+HTTP requests.
+
+Each active line is either a handle or an property.
+
+A @dfn{handle} is an element with contents that may be either
+@dfn{properties} or other handles.  A @dfn{property} is a line that
+has a @dfn{tag} and a @dfn{value}.
+
+@example
+handle
+   tag : value
+@end example
+
+Relationships between elements in an SRM file are indicated by indentation.  Child properties
+that belong to a handle are indented to the same number of white spaces as their siblings.
+A set of contents is terminated an element at a lower level of indentation or the end of the
+file.  In the following example, @emph{household} is a handle that introduces a collection of
+several @emph{member} handle elements, which themselves introduce properties.
+
+Under a handle, all elements of the same indentation level are first-generation children of
+the handle element.  Each collection of elements under a handle are terminated by an element
+of the same or lower indentation level as the handle that introduced the collection.
+
+The collection of household member Charles' properties are terminated by the introduction of
+member Caroline.
+
+Within any collection of elements, the relationship between parent and child elements is determined
+by the indentation level.  Differing indentation levels under related elements is not significant.
+For example, even though the properties of Caroline and Alonzo have the same number of indentation
+spaces, they will not be grouped together because of the intervening higher-level elements.
+
+@example
+household
+   member
+      formal-name : Charles
+      nickname : Pa
+      adult : true
+   member
+         formal-name : Caroline
+         nickname : Ma
+         adult : true
+   member
+      formal-name : Mary
+   member
+      formal-name : Laura
+      nickname : half-pint
+      spouse
+         formal-name : Alonzo
+         nickname : Manly
+   member
+      formal-name : Caroline
+      nickname : Carrie
+      name : nails
+      class : supply
+@end example
+
+The following example is using actual SchemaServer properties.
+
+@example
+list
+   procedure : App_Person_List
+   type : table
+   on_line_click : ?edit
+   schema
+      field : id
+         readOnly : true
+      field : fname
+         label : First Name
+      field : lname
+         label : Last Name
+@end example
+
+SRM files contain @emph{modes}, each of which consist of 
+
+@node Shared Elements
+@chapter Shared Elements
+
+Certain collections of properties will be used in many places in an application.
+To save typing and, more importantly, to enforce consistency, SchemaServer allows
+the definition of @dfn{shared} elements which can be included elsewhere in the
+hierarchy.  
+
+There are two types of sharing, @dfn{labelled} and @dfn{siblings}.  The distinction between
+the two share types is how they are inserted into their contexts.
+
+Shares can be nested.  That is, a shared element can itself contain shared elements.  The @dfn{siblings} share section below uses nested share.
+
+@section What is a Shared Element?
+
+A shared element is a first-column handle whose tag is @emph{$shared} and includes
+a value with which it can be called.  Compare the elements in the following script
+with the effective elements after the shares are reconciled:
+
+@subheading Original Script
+@example
+$shared : escape-options
+   option : fight
+   option : run
+   option : hide
+   option : bargain
+   option : confess
+   option : surrender
+
+disasters
+   earthquake
+      options : $escape-options
+   bear-attack
+      options : $escape-options
+   caught-cheating
+      options : $escape-options
+@end example
+
+@subheading Effective Script
+
+@example
+disasters
+   earthquake
+      options
+         option : fight
+         option : run
+         option : hide
+         option : bargain
+         option : confess
+         option : surrender
+   bear-attack
+      options
+         option : fight
+         option : run
+         option : hide
+         option : bargain
+         option : confess
+         option : surrender
+   caught-cheating
+      options
+         option : fight
+         option : run
+         option : hide
+         option : bargain
+         option : confess
+         option : surrender
+@end example
+
+@section Labeled Share
+
+A labeled share is initiated with a tagged proprty whose value is the name of the shared
+element, @emph{prefixed with a $}.  The tag will remain, and the contents of the share
+will follow the tag at a new indentation level.  The previous example is an illustration of
+a labeled share.  The share is invoked under each disaster by @code{options : $escape-options},
+which prompts @command{schema.fcgi} to seek a shared element named @emph{escape-options}.
+
+In the reconciled form, each tag, @emph{options} remains, but is followed by the elements
+of the shared @emph{escape-options} element.
+
+@section Siblings Share
+
+Sometimes shared content must be inserted into a given context without additional indentation.
+The @dfn{siblings} share method inserts the shared content at the same indentation level as the
+invocation of the share.
+
+@example
+
+$shared : physical-options
+   option : fight
+   option : run
+   option : hide
+
+$shared : relate-options
+   option : bargain
+   option : confess
+   option : surrender
+
+$shared : escape-options
+   siblings : $physical-options
+   siblings : $relate-options
+
+disasters
+   earthquake
+      options : $escape-options
+   .
+   .
+@end example
+
+In this example, the @emph{escape-options} includes two siblings shares.  The resulting
+@emph{escape-options} element will contain the contents of elements @emph{physical-options} and
+@emph{relate-options} and would work 
+
+
+
+
+@node Autoload
+@chapter Autoload
+
+The autoload feature provides a means to implicitely include shares into
+certain mode types.
+
+@section Autoload as Include File
+
+When an @file{autoload.srm} file is included in a SchemaServer
+application directory, the contents of the @file{autoload.srm} file will
+be included into every call to an SRM file in that directory.
+
+Just like any include file, the @file{autoload.srm} file can define
+global settings like @code{$xml-stylesheet} or @code{$database}, as well
+as @code{$shared} modes to be included in other contexts.
+
+@section Autoload as Implicit Share
+
+The true benefit of using an @file{autoload.srm} file are the
+implicit inclusions of shared modes into tagged contexts.  When a
+response mode includes an @code{autoload_tag} property,
+@command{schema.fcgi}  will look for a shared mode with a name that
+starts as @emph{autoload_} and finishes with the @code{autoload_tag}
+value.  For example, if a response mode includes a property
+@code{autoload_tag : page}, it will look for a shared mode named
+@code{autoload_page}.  The share will be as a siblings share at
+the point of the @code{autoload_tag} element.
+
+@subsection Autoload Shares are Optional
+
+Unlike other shares that generate an error if the share cannot be
+found, autoload shares are optional.  If the implied share name is
+not found, the mode reconciliation will quietly continue processing.
+
+@section Navigation Autoload Example
+
+The inspiration for adding the autoload feature are the files generated
+by the @command{gensfw} command.  Although external SRM files can be
+included with the @code{Set SRM Globals} button, there is no way to
+invoke the shares in the generated response modes.  Having an implicitely
+invoked share makes it possible to have custom elements in a generated
+SRM file without having to customize the SRM file contents.
+
+The most obvious example is a navigation definition that should be
+included on all top-level pages in an application.  This example is
+implemented by the @command{gensfw} output.
+
+@subsection gensfw SRM Files
+
+@command{gensfw} can create scripts for MySQL procedures and SchemaServer
+response modes to manage a table.  It will provide for a list interaction
+that shows the contents of the table, and dialog interactions for adding,
+editing, and deleting records in the table, as well as import and
+export dialogs.
+
+The list interaction is a top-level page that @command{gensfw}, by
+default, sets the @code{autoload_tag} property to ``page''.  When
+@command{schema.fcgi} is reconciling the shares, it will look for a
+@code{$shared : autoload_page} handle and include it if found.
+
+The shared elements will be inserted as a siblings share.
+
+@subheading autoload.srm
+@example
+$shared : autoload_page
+   navigation
+      target
+         label : Person
+         url   : Person.srm
+      target
+         label : Residence
+         url   : Residence.srm
+@end example
+
+@subheading Person.srm
+@example
+list
+   type      : table
+   procedure : App_Person_List
+   autoload_tag : page
+@end example
+
+@subheading Effective Response Mode
+@example
+list
+   type      : table
+   procedure : App_Person_List
+   navigation
+      target
+         label : Person
+         url   : Person.srm
+      target
+         label : Residence
+         url   : Residence.srm
+@end example
+
+
+
+@bye
