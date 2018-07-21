@@ -46,9 +46,10 @@ define install_documentation
 	gzip -f /usr/share/man/man1/schema.fcgi.1
 	cp ../offline_docs/schema.fcgi.7            /usr/share/man/man7
 	gzip -f /usr/share/man/man7/schema.fcgi.7
+
 	makeinfo ../offline_docs/schema.fcgi.txi --paragraph-indent=0 -o /usr/share/info
 	gzip -f /usr/share/info/schema.fcgi.info
-	install-info --info-dir=/usr/share/info /usr/share/info/schema.fcgi.info.gz
+	install-info /usr/share/info/schema.fcgi.info.gz
 endef
 
 all: schema.fcgi
