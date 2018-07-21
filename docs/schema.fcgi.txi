@@ -51,9 +51,30 @@ production.
 @node Introduction
 @chapter Introduction
 
-SchemaServer is a FastCGI component that, under the direction of simple
-scripts files, serves XML documents from MySQL procedure results in
-response to HTTP requests.
+SchemaServer is a FastCGI component, named @dfn{schema.fcgi}, that
+serves XML documents from MySQL procedure results in response to HTTP
+requests.
+
+@command{schema.fcgi} reads script files with the extension
+@acronym{srm, Schema Response Mode}, to know how to interpret HTTP
+requests.  Under the direction of the @file{srm} script files,
+@command{schema.fcgi} includes schemas that describe the names and data
+types of procedure parameters and query result columns.  The schema
+information can be used to build forms and tables with which the
+end user can interact with the MySQL data.
+
+The @file{srm} file can modify the default XML output in several ways
+to provide detailed instructions about how the end user will see
+and interact with the data.
+
+Outside of a few reserved words that transmit required information or
+handle specific situations, the contents of @file{srm} files are
+simply converted to XML in the returned XML document.
+
+The @file{srm} script is written with consideration of the consumer
+of the data that knows how to interpret the XML modifications specified
+by the @file{srm} file.  This philosophy keeps @command{schema.fcgi}
+relatively simple and extremely flexible.  
 
 @node SRM Scripts
 @chapter SRM Scripts
