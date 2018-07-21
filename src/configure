@@ -42,14 +42,14 @@ define install_utilities
 endef
 
 define install_documentation
-	cp ../offline_docs/schema.fcgi.1            /usr/share/man/man1
-	gzip -f /usr/share/man/man1/schema.fcgi.1
-	cp ../offline_docs/schema.fcgi.7            /usr/share/man/man7
-	gzip -f /usr/share/man/man7/schema.fcgi.7
+	cp ../docs/schema.fcgi.1 /usr/share/man/man1
+	gzip -f                  /usr/share/man/man1/schema.fcgi.1
+	cp ../docs/schema.fcgi.7 /usr/share/man/man7
+	gzip -f                  /usr/share/man/man7/schema.fcgi.7
 
-	makeinfo ../offline_docs/schema.fcgi.txi --paragraph-indent=0 -o /usr/share/info
-	gzip -f /usr/share/info/schema.fcgi.info
-	install-info /usr/share/info/schema.fcgi.info.gz
+	makeinfo ../docs/schema.fcgi.txi --paragraph-indent=0 -o  /usr/share/info
+	gzip -f      /usr/share/info/schema.fcgi.info
+	install-info /usr/share/info/schema.fcgi.info.gz /usr/share/info/dir
 endef
 
 all: schema.fcgi
@@ -133,7 +133,7 @@ install:
 	install -D --mode=644 ../install/SchemaServer.conf /etc/apache2/conf-available/SchemaServer.conf
 	a2enconf SchemaServer
 
-update-documentation:
+update-docs:
 	$(call install_documentation)
 
 update-utilities:

@@ -4,7 +4,7 @@
 
 @dircategory Schema Framework Documents
 @direntry
-* SchemaServer: (texinfo).       Documentation for schema.fcgi Server.
+* SchemaServer: (schema.fcgi).       Documentation for schema.fcgi Server.
 @end direntry
 
 @copying
