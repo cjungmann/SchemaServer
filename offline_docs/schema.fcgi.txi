@@ -2,6 +2,11 @@
 @setfilename schema.fcgi.info
 @settitle Using SchemaServer
 
+@dircategory Schema Framework Documents
+@direntry
+* SchemaServer: (texinfo).       Documentation for schema.fcgi Server.
+@end direntry
+
 @copying
 Offline Manual for SchemaServer
 
@@ -21,19 +26,18 @@ Copyright @copyright{} 2018 Charles P Jungmann
 @top Using SchemaServer
 
 This manual is an offline reference for the SchemaServer component,
-@code{schema.fcgi}.  Included in this manual are instructions for
-installing and testing @code{schema.fcgi}, SRM script syntax usage
-and examples, and command line options for debugging scripts.
+@code{schema.fcgi}.  This manual includes instructions for installing
+and testing @code{schema.fcgi}, SRM script syntax usage and examples,
+and command line options for debugging scripts.
 
 I apologize to anyone finding this manual who hopes for a comprehensive
 treatment in the use of SchemaServer.  I began this manual to create
 @emph{offline} documentation that I can refer to when I need a
 reminder of syntax or usage.
 
-I expect to be slowly adding content to this manual.  At first, it
-will be documentation about features I had some trouble remembering.
-The manual will be fleshed out more quickly if the software gains
-wider use to support the new users.
+As long as this remains a personal project, I will have to limit my
+time writing documentation in favor of development, testing, and
+production.
 @end ifnottex
 
 @contents
