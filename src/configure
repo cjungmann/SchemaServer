@@ -165,6 +165,10 @@ uninstall:
 	# remove man pages
 	rm -f /usr/share/man/man1/schema.fcgi.1
 	rm -f /usr/share/man/man7/schema.fcgi.7
+	# ininstall and remove info page
+	install-info --delete /usr/share/info/schema.fcgi.info.gz /usr/share/info/dir
+	rm -f /usr/share/info/schema.fcgi.info.gz
+
 	# final clean-up
 	rm -r -f /usr/local/lib/SchemaServer
 
