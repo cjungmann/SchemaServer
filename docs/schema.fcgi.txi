@@ -46,6 +46,7 @@ production.
 * SRM Scripts::               Define and describe SRM files
 * Shared Elements::           Define once and use multiple times
 * Autoload::                  Using Autoload Feature
+* Sample Files::              Simple Examples to Aid Development
 @end menu
 
 @node Introduction
@@ -365,6 +366,158 @@ list
          label : Residence
          url   : Residence.srm
 @end example
+
+@node Sample Files
+@chapter Sample Files
+
+These sample files are provided to jumpstart the development
+of a new @command{schema.fcgi} application.  It is not necessary to
+copy the contents of the samples, but rather use as a reminder
+of what things can be included in the file type, to be used or
+discarded as appropriate.
+
+@menu
+* MySQL Sample Files::
+* SRM Sample Files::
+@end menu
+
+@node MySQL Sample Files
+@section MySQL Sample Files
+
+@menu
+* Creating Tables::
+* Creating Procedures::
+@end menu
+
+MySQL is fundamental to @command{schema.fcgi}, and proper care in
+setting up the MySQL tables and procedures, particularly in following
+@code{schemafw} conventions, will make future development easier.
+
+@node Creating Tables
+@subsection Creating Tables
+
+Tables are usually related to other tables, with tables joined through
+and integer field that holds a reference to the @var{id} field of the
+related table.
+
+In this example, the @samp{Person} table is associated with an unseen
+account table through the @var{id_account} field.  The @code{INDEX}
+line is very important to speed access to the person records of a
+given account.
+
+@example
+SET default_storage_engine=InnoDB;
+
+CREATE TABLE Person
+(
+   id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+   id_account INT UNSIGNED NOT NULL,
+   fname      VARCHAR(40),
+   lname      VARCHAR(40),
+
+   INDEX(id_account)
+);
+@end example
+
+@node Creating Procedures
+@subsection Create Procedures
+
+MySQL procedures define the interface between the user and the data,
+so the design of the procedures is very important.  This section will
+show several of the fundamental procedure types.
+
+The procedures in the section will use the Person table defined in the
+earlier @ref{Creating Tables, Creating Tables} section.
+
+@subsubsection List Records Procedure
+
+List procedures are generally used to describe a landing page in an
+application, from which records can be viewed are to which new records
+can be added.
+
+The following sample procedure is designed to return a single record as
+well the entire collection.  This practice provides data consistency for
+updating or adding records.  If these two tasks were broken into two
+procedures, changes to either would have to be incorporated into the
+other.
+
+@example
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS App_Person_List $$
+CREATE PROCEDURE App_Person_List(person_id INT UNSIGNED)
+BEGIN
+   SELECT p.id, p.fname, p.lname
+     FROM Person p
+    WHERE id_account = @@session_confirmed_account
+      AND (person_id IS NULL OR p.id = person_id);
+END $$
+
+DELIMITER ;
+@end example
+
+@subsubsection Add Record Procedure
+
+@example
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS App_Person_Add $$
+CREATE PROCEDURE App_Person_Add(fname VARCHAR(40),
+                                lname VARCHAR(40))
+BEGIN
+   INSERT INTO
+        Person (id_account, fname, lname)
+        VALUES (@@session_confirmed_account, fname, lname);
+
+   IF ROW_COUNT() > 0 THEN
+      CALL App_Person_List(LAST_INSERT_ID());
+   END IF;
+END $$
+
+DELIMITER ;
+@end example
+
+
+@subsubsection Delete Record Procedure
+
+I would like to call out three concepts in the following
+sample.
+
+@enumerate
+@item
+Using more than just the @var{id} value to help prevent mistakes
+or to inhibit malicous deletes using random @var{id} values.
+
+@item
+The FROM clause is using @code{USING AS} allow us to
+distinguish between like-named parameters and field.
+
+@item
+The @code{SELECT ROW_COUNT() AS deleted} provides a ``return value''
+to indicate success or failure of the delete.
+
+@end enumerate
+
+@example
+DROP PROCEDURE IF EXISTS App_Keyword_Delete $$
+CREATE PROCEDURE App_Keyword_Delete(id INT UNSIGNED,
+                                    lname VARCHAR(20))
+BEGIN
+   DELETE
+     FROM p USING Person AS p
+    WHERE p.id_account=@@session_confirmed_account
+      AND p.id=id
+      AND p.lname=lname;
+
+   SELECT ROW_COUNT() AS deleted;    
+END $$
+@end example
+
+
+
+@node SRM Sample Files
+@section SRM Sample Files
+
 
 
 
