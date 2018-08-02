@@ -253,7 +253,7 @@ void Result_As_FODS::prepare_tmp_directory(void)
       }
 
       char source[256];
-      strcpy(source, "/usr/local/lib/schemafw/ods/");
+      strcpy(source, "/usr/local/lib/SchemaServer/install/ods/");
       char *psource = &source[strlen(source)];
 
       auto f = [this, &source, &psource, &target](const char* file)
@@ -438,10 +438,14 @@ void Result_As_FODS::write_meta_file(const char *pathsource, const char *pathtar
    size_t todate;
    size_t filesize = 0;
    
-   if (fh_t)
+   if (fh_t==-1)
+      ifprintf(stderr, "Failed O_CREAT|O_WRONLY open of %s: %d.\n", pathtarget, errno);
+   else
    {
       int fh_s = open(pathsource, O_RDONLY);
-      if (fh_s)
+      if (fh_s==-1)
+         ifprintf(stderr, "Failed O_RDONLY open of %s: %d.\n", pathsource, errno);
+      else
       {
          struct stat st;
          char dbuff[25];
