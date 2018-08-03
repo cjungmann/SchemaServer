@@ -43,10 +43,11 @@ production.
 @contents
 @menu
 * Introduction::
-* SRM Scripts::               Define and describe SRM files
-* Shared Elements::           Define once and use multiple times
-* Autoload::                  Using Autoload Feature
-* Sample Files::              Simple Examples to Aid Development
+* SRM Scripts::                  Define and describe SRM files
+* Shared Elements::              Define once and use multiple times
+* Autoload::                     Using Autoload Feature
+* Auto-called MySQL Procedures:: Directly-called Procedures
+* Sample Files::                 Simple Examples to Aid Development
 @end menu
 
 @node Introduction
@@ -367,6 +368,178 @@ list
          url   : Residence.srm
 @end example
 
+
+@node Auto-called MySQL Procedures
+@chapter Auto-called MySQL Procedures
+
+There are several procedures that are called directly by the
+@command{schema.fcgi}.  Some are called to discover a procedure's
+parameters names and data types.  Other procedures are called to
+prepare sessions.
+
+Most of the procedures discussed in this chapter are found in the
+script @file{sys_procs.sql}.
+
+@menu
+* Procedure Discovery Procedures::
+* Session Handling Procedures::
+* Password Handling Procedures::
+* Import Handling Procedures::
+@end menu
+
+@node Procedure Discovery Procedures
+@section Procedure Discovery Procedures
+
+@dfn{ssys_get_procedure_params}
+@dfn{ssys_get_column_dtds}
+@dfn{ssys_get_procedure}
+
+This section is a place-holder for future content.
+
+
+@node Session Handling Procedures
+@section Session Handling Procedures
+
+In addition to procedures, there is a built-in table,
+@dfn{SSYS_SESSION} that is the foundation for tracking
+sessions.
+
+When sessions are being used, @command{schema.fcgi} calls several
+procedures before any modes can be executed.  There are two main
+reasons for this:
+
+@enumerate
+@item
+To confirm authorization before further access is allowed.
+@item
+To preparing, restoring, and clearing session variables before
+application-specific procedures are called.
+@item
+@end enumerate
+
+@menu
+* Required Session Procedures::
+* Optional Session Procedures::
+@end menu
+
+@node Required Session Procedures
+@subsection Required Session Procedures
+
+The following functions are directly called by @command{schema.fcg}
+when working with sessions.  @file{sys_procs.sql} includes empty
+version of these function to ensure they can be called, but these
+functions should be overwritten to implement application-specific 
+session handling.
+
+@subheading App_Session_Start(session_id INT UNSIGNED)
+The procedure is called when a new session is established.
+It is the opportunity to create a session record in an
+application-specific table.
+@*
+@strong{Parameters} @*
+@table @strong
+@item session_id
+The id of a new or recycled record in the @code{SSYS_SESSION}
+table that manages the new session.
+@end table
+@*
+@strong{Result Selection} @*
+The result selection of this procedure is not used.
+
+@subheading App_Session_Restore(session_id INT UNSIGNED)
+If the appropriate SRM flags are set, this procedure will be
+called before the users' requests are applied to a mode
+procedure.  The procedure should prepare any session variables,
+pulling information from the application-specific table as
+identified by the @code{session_if} parameter.
+
+When this function is called, the session's existence and
+validity have already been established.
+@*
+@strong{Parameters} @*
+@table @strong
+@item session_id
+The id of a confirmed open session.
+@end table
+@*
+@strong{Result Selection} @*
+The result selection of this procedure is not used.
+
+@subheading App_Session_Cleanup()
+This procedure is called at the conclusion of a request.
+To prevent unauthorized access to what may be private or
+sensitive session data, this procedure should null-out all
+session variables to leave a blank slate for following
+requests to the same instance of @command{schema.fcgi}.
+@*
+@strong{Parameters} @*
+@table @strong
+@item session_id
+The id of a confirmed open session.
+@end table
+@*
+@strong{Result Selection} @*
+The result selection of this procedure is not used.
+
+@subheading App_Session_Abandon(session_id INT UNSIGNED)
+This procedure is called when a session times-out or when
+a user explicitely requests to logout of the session.
+
+This procedure should remove session information that was
+created in the @code{App_Session_Start} procedure, deleting
+or clearing records in the application-specfic session
+tables as appropriate.
+@*
+@strong{Parameters} @*
+@table @strong
+@item session_id
+The id of a confirmed open session.
+@end table
+@*
+@strong{Result Selection} @*
+The result selection of this procedure is not used.
+
+@node Optional Session Procedures
+@subsection Optional Session Procedures
+
+Some procedures will only be called if defined in an SRM file.
+The main examples of this relate to authorized access, where
+procedures may named for certain purposes.
+
+@subsubheading $test_authorized
+The value of this instruction should be a procedure that will
+report on the authorization of a session.  If specified as a
+global instruction in the SRM file
+ with the
+If a global instruction @strong{$test_authorized} is specified,
+the named procedure will be called by @command{schema.fcgi}
+prior to calling procedure @code{App_Session_Restore}.  A common
+name for this procedure is @code{App_Session_Confirm}.@*
+@*
+@strong{Parameters}
+@table @strong
+@item session_id
+The cookie-passed id of an alleged session.
+@end table
+@*
+@strong{Result Selection} @*
+Select an INT value greater than 0 to indicate a valid session.
+A 0 or NULL selection will be interpreted as a rejection of the
+specified session.
+
+@node Password Handling Procedures
+@section Password Handling Procedures
+
+This section is a place-holder for future content.
+
+@node Import Handling Procedures
+@section Import Handling Procedures
+
+@dfn{ssys_default_import_removal}
+@dfn{ssys_default_import_confirm}
+
+This section is a place-holder for future content.
+
 @node Sample Files
 @chapter Sample Files
 
@@ -429,6 +602,13 @@ show several of the fundamental procedure types.
 The procedures in the section will use the Person table defined in the
 earlier @ref{Creating Tables, Creating Tables} section.
 
+@menu
+* List Records Procedure::
+* Add Record Procedure::
+* Delete Record Procedure::
+@end menu
+
+@node List Records Procedure
 @subsubsection List Records Procedure
 
 List procedures are generally used to describe a landing page in an
@@ -456,6 +636,7 @@ END $$
 DELIMITER ;
 @end example
 
+@node Add Record Procedure
 @subsubsection Add Record Procedure
 
 @example
@@ -478,6 +659,7 @@ DELIMITER ;
 @end example
 
 
+@node Delete Record Procedure
 @subsubsection Delete Record Procedure
 
 I would like to call out three concepts in the following
@@ -518,6 +700,7 @@ END $$
 @node SRM Sample Files
 @section SRM Sample Files
 
+This section is a place-holder for future content.
 
 
 
