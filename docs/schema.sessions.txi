@@ -1,0 +1,118 @@
+@node Sessions
+@chapter Sessions
+
+Sessions keep track of individual users in order to allow them
+to return to work already done.  Upon the establishment of a new
+session, a record is automatically created in @dfn{SSYS_SESSION},
+and optionally in a application-defined support table.
+
+@menu
+* Session Types::          Explain the basic session types
+* Simple Session Type::    Unqualified session
+* Identity Session Type::  Session for authorized or subsection
+                           interactions
+* Establish Session Type:: Allow unauthorized access during login
+                           interactions
+@end menu
+
+@node Session Types
+@section Session Types
+
+There are @dfn{simple} and @dfn{identity} sessions.
+
+@subheading Simple Session
+
+A simple session is established silently when specified.  This
+type of session is used for multiple-step interactions that do
+not require authorization.
+
+@subheading Identity Session
+
+An identity session is used when it is important to establish
+the user, or at least the user's intentions.  It is most
+commonly used when an application requires that a user login
+
+
+@node Simple Session Type
+@section Simple Session Type
+
+A simple session is established by a single SRM instruction,
+@code{$session-type : simple}  This instruction will use an
+established session or create a new one if needed.
+
+The primary reason for establishing a simple session is to
+track multiple-step interactions.  In particular, an import
+interaction consists of three steps:
+
+@enumerate
+@item
+Upload the file
+@item
+Review the upload
+@item
+Commit or abandon the upload.
+@end enumerate
+
+
+@node Identity Session Type
+@section Identity Session Type
+
+An identity session is primarily for logged-in, authorized
+access to an application.  It can also be used to set 
+session variables that help direct user interactions.
+
+The main characteristic of an identity session is that
+the SRM file will include a remedy for an expired session.
+
+@example
+$session-type        : identity
+$test_authorized     : App_Session_Bespoke_Checker
+$jump_not_authorized : login.srm
+@end example
+
+The @code{$test_authorized} instruction names the procedure
+that can test if a session is still valid.  The procedure
+takes a single parameter, an INT UNSIGNED with the session
+id, and returns via a query result, 0 for an expired or
+invalid session, or non-zero for a valid sessions.
+
+@code{$jump_not_authorized} specifies the URL to which the
+user will be directed if the session is not valid.
+
+@node Establish Session Type
+@section Establish Session Type
+
+Commonly, an application will put the session specifications
+in a common shared file so all interactions will behave
+consistently.  For an identity session type, this means that
+interactions will be forbidden unless the user's identity is
+established.
+
+This poses a problem for collecting authorization values:
+the @command{schema.fcgi} program will normally refuse to
+serve the form needed to submit them, and the interaction
+that confirms them.  Changing the session type to @emph{none}
+would not work because the session established upon entry
+to @command{schema.fcgi} would be abandoned, losing the
+connection to the 
+
+In this type of case, the global $session-type should be
+overridden by a local $session-type.  Consider the following
+example:
+
+@example
+main
+   type         : form-new
+   session-type : establish
+   schema-proc  : App_Session_Login
+   form-action  : ?login
+   title        : Log into the application
+
+login
+   type         : form-result
+   session-type : establish
+   procedure    : App_Session_Login
+   jump         : mainapp.srm
+@end example
+
+   

@@ -1,0 +1,75 @@
+@node Mode Types
+@chapter Mode Types
+
+The @code{type} instruction of an SRM mode serves two purposes.
+The first is for several mode types, the value gives guidance
+to @command{schema.fcgi} on how to handle the data submitted
+with a request.  The second purpose is as a signal to the
+software stack that receives the data.
+
+@menu
+* List of Mode Types::
+@end menu
+
+
+@node List of Mode Types
+@section List of Mode Types
+
+@subheading Form Mode Types
+
+@xref{Forms}
+
+@table @strong
+@item form-new
+Prompts @command{schema.fcgi} to return a schema without any
+data.  The schema will be derived from the parameters of the
+procedure named by either the @code{procedure} or
+@code{schema-proc} instructions.  Pre-filled fields, if any,
+are filled with schema data, not data coming from the results
+of a procedure.
+@item form-edit
+This mode-type returns both a schema for building a form and
+the data from an existing record with which to pre-fill the
+form.  A mode with this type typically includes both a
+@code{schema-proc} instruction for the form schema, and a
+@code{procedure} instruction naming the procedure that will
+return the values to fill in the form fields from which the
+procedure's parameters will be set.
+@item form-import
+Somewhat different from an empty form, this form type should
+result in a form with a file entry field.  This is mostly
+up to the framework that presents the data.
+@xref{Importing}
+@item form-submit
+Unlike the previous form mode types, this type maps the
+HTTP request data into the parameters of the procedure named
+by the @code{procedure} instruction, returning the results
+of the procedure.
+@item form-result
+This mode type behaves exactly like @code{form-submit}, the
+main difference is for the consuming framework to interpret
+the results as an answer to a question, not as data for
+display.
+
+@end table
+
+
+
+
+
+@table @strong
+@item save-post
+This mode type preserves the submitted data to a file that
+can be used for debugging modes with the command-line invocation
+of @command{schema.fcgi}.
+@item abandon-session
+This mode type triggers the termination of a session.  The
+@command{schema.fcgi} response will then proceed as it would have
+if the session had timed-out, jumping to a login page or simply
+establishing a fresh session, depending on the @code{$session-type}
+setting.
+@item export
+This mode type causes @command{schema.fcgi} to return the results
+of the @code{procedure} instruction as a spreadsheet.
+@end table
+
