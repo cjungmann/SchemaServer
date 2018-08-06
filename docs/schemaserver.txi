@@ -1,10 +1,10 @@
 \input texinfo
-@setfilename schema.fcgi.info
+@setfilename schemaserver.info
 @settitle Using SchemaServer
 
 @dircategory Schema Framework Documents
 @direntry
-* SchemaServer: (schema.fcgi).       Documentation for schema.fcgi Server.
+* SchemaServer: (schemaserver).       Documentation for schema.fcgi Server.
 @end direntry
 
 @copying
