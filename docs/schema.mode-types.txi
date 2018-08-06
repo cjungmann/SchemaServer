@@ -17,51 +17,47 @@ software stack that receives the data.
 
 @subheading Form Mode Types
 
-@xref{Forms}
+@inforef{Forms, Forms, schemafw} for a more comprehensive
+discussion of how the Schema Framework uses these and other
+mode types to generate and respond to forms.
+
+Although @uref{https://www.github.com/cjungmann/schemafw, Schema Framework}
+responds to a large number of form-base mode-types, there are
+only four form mode-types that elicit a unique response from
+@command{schema.fcgi}.
 
 @table @strong
 @item form-new
 Prompts @command{schema.fcgi} to return a schema without any
-data.  The schema will be derived from the parameters of the
-procedure named by either the @code{procedure} or
-@code{schema-proc} instructions.  Pre-filled fields, if any,
-are filled with schema data, not data coming from the results
-of a procedure.
-@item form-edit
-This mode-type returns both a schema for building a form and
-the data from an existing record with which to pre-fill the
-form.  A mode with this type typically includes both a
-@code{schema-proc} instruction for the form schema, and a
-@code{procedure} instruction naming the procedure that will
-return the values to fill in the form fields from which the
-procedure's parameters will be set.
-@item form-import
-Somewhat different from an empty form, this form type should
-result in a form with a file entry field.  This is mostly
-up to the framework that presents the data.
-@xref{Importing}
-@item form-submit
-Unlike the previous form mode types, this type maps the
-HTTP request data into the parameters of the procedure named
-by the @code{procedure} instruction, returning the results
-of the procedure.
+data.  Like any other form display mode-type, use the @command{schema-proc}
+instruction to build a schema from the parameters of a stored
+procedure.  What makes @code{form-new} unique is that it returns
+after printing the schema, ignoring any @command{procedure}
+commands.
 @item form-result
-This mode type behaves exactly like @code{form-submit}, the
-main difference is for the consuming framework to interpret
-the results as an answer to a question, not as data for
-display.
-
+This mode type is unique in that if the named procedure includes
+only one query output, that result will be tagged as a @code{variables}
+result type.  With more than one result, any result typing must be
+explicit.  This mode type is provided only to have a useful
+minimal mode definition.
+@item import
+Despite not including the @code{form-} stem, this is a special
+form mode-type that will process the HTTP request as a
+multi-part form and will create a simple session if a session
+type was not otherwise defined.
+@item save-post
+This mode type preserves the data submitted by a form into a file
+that can be used for debugging modes with the command-line invocation
+of @command{schema.fcgi}.
 @end table
 
+@subheading Other Mode Types
 
-
-
+These miscellaneous mode types trigger specific actions by
+@command{schema.fcgi}, independent of how they are viewed
+or rendered.
 
 @table @strong
-@item save-post
-This mode type preserves the submitted data to a file that
-can be used for debugging modes with the command-line invocation
-of @command{schema.fcgi}.
 @item abandon-session
 This mode type triggers the termination of a session.  The
 @command{schema.fcgi} response will then proceed as it would have
