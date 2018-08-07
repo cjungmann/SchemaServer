@@ -2634,6 +2634,34 @@ void Schema::process_response_mode(void)
       return;
    }
 
+   bool abandoning = m_mode_action == MACTION_ABANDON_SESSION;
+
+   SESSION_TYPE   stype   = get_session_type();
+   SESSION_STATUS sstatus = get_session_status(stype, abandoning);
+
+   const char *early_jump_header = nullptr;
+
+   // early_jump will be set if authorization rules and the current session status warrant:
+   if ((early_jump_header=check_for_early_jump(stype,sstatus)))
+   {
+      if (s_sfw_xhrequest)
+      {
+         set_forbidden_header();
+         clear_session_cookies();
+      }
+      else
+      {
+         print_Status_303();
+         write_location_header(early_jump_header);
+
+         if (sstatus==SSTAT_EXPIRED || abandoning)
+            clear_session_cookies();
+      }
+      write_headers_end();
+
+      return;
+   }
+
    if (s_debug_action==DEBUG_ACTION_PRINT_MODE)
       return m_mode->dump(stdout, false);
    
@@ -2662,132 +2690,103 @@ void Schema::process_response_mode(void)
       return;
    }
 
-   bool abandoning = m_mode_action == MACTION_ABANDON_SESSION;
+   // The early jump with via "Status: 303" and Location is done,
+   // everything after this uses "Status: 200", so let's send it
+   // before we go on:
+   print_Status_200();
 
-   SESSION_TYPE   stype   = get_session_type();
-   SESSION_STATUS sstatus = get_session_status(stype, abandoning);
-
-   // early_jump will be set if authorization rules and the current session status warrant:
-   const char *early_jump = check_for_early_jump(stype, sstatus);
-
-   // Provide appropriate feedback before leaving for authorization issues:
-   if (early_jump)
+   // If a session is needed but expired or not yet running,
+   // start a session and write out new cookie values:
+   if (stype>STYPE_NONE && sstatus<SSTAT_RUNNING)
    {
-      if (s_sfw_xhrequest)
+      // This function creates the records and writes the cookie values:
+      if (!create_session_records())
       {
-         set_forbidden_header();
-         clear_session_cookies();
+         print_XML_ContentType();
+         write_headers_end();
+         write_xml_start();
+         print_message_as_xml(m_out,
+                              "error",
+                              "failed to establish a session",
+                              "QUERY_STRING");
+            
+         // early exit with completed document:
+         return;
       }
-      else
-      {
-         print_Status_303();
-         write_location_header(early_jump);
+   }
 
-         if (sstatus==SSTAT_EXPIRED || abandoning)
-            clear_session_cookies();
+   if (m_mode_action==MACTION_EXPORT)
+   {
+      const char *filename = m_mode->seek_value("filename");
+      if (!filename)
+         filename = m_mode->seek_value("file-name");
+      if (filename)
+      {
+         ifputs("Content-Disposition: filename=\"", s_header_out);
+         ifputs(filename, s_header_out);
+         ifputs("\"\n", s_header_out);
       }
-      write_headers_end();
+      print_FODS_ContentType();
+   }
+   else
+      print_XML_ContentType();
+            
+   write_headers_end();
+
+   if (m_mode_action==MACTION_EXPORT)
+   {
+      process_export();
    }
    else
    {
-      // The early jump with via "Status: 303" and Location is done,
-      // everything after this uses "Status: 200", so let's send it
-      // before we go on:
-      print_Status_200();
+      write_xml_start(m_mode_action!=MACTION_EXPORT);
+         
+      // The jump instruction will be included as a meta instruction
+      // in the HTML head element, and as such, will be a suggestion.
+      // The standard sfw_templates.xsl will create a meta element in
+      // the HTML head element, but custom implementations are not
+      // bound to that behavior.
+      m_meta_jump = value_from_mode("jump");
 
-      // If a session is needed but expired or not yet running,
-      // start a session and write out new cookie values:
-      if (stype>STYPE_NONE && sstatus<SSTAT_RUNNING)
+      // Detect request types:
+      if (m_mode_action==MACTION_IMPORT)
       {
-         // This function creates the records and writes the cookie values:
-         if (!create_session_records())
+         auto waive = m_mode->seek("waive","session");
+         if (stype==STYPE_NONE && !waive)
          {
-            print_XML_ContentType();
-            write_headers_end();
-            write_xml_start();
+            const char *sname = m_specsreader->scriptname();
+            const char *mname = m_mode->tag();
+            // Only need length of first string because strcpy() adds terminating \0
+            int lsname = strlen(sname);
+            int len = lsname + strlen(mname) + 2; // 2 for ':' and \0
+            char *mode_identifier = static_cast<char*>(alloca(len));
+            char *p = mode_identifier;
+            strcpy(p, sname);
+            p += lsname;
+            *p++ = ':';
+            strcpy(p, mname);
+                  
             print_message_as_xml(m_out,
                                  "error",
-                                 "failed to establish a session",
-                                 "QUERY_STRING");
-            
-            // early exit with completed document:
-            return;
-         }
-      }
-
-      if (m_mode_action==MACTION_EXPORT)
-      {
-         const char *filename = m_mode->seek_value("filename");
-         if (!filename)
-            filename = m_mode->seek_value("file-name");
-         if (filename)
-         {
-            ifputs("Content-Disposition: filename=\"", s_header_out);
-            ifputs(filename, s_header_out);
-            ifputs("\"\n", s_header_out);
-         }
-         print_FODS_ContentType();
-      }
-      else
-         print_XML_ContentType();
-            
-      write_headers_end();
-
-      if (m_mode_action==MACTION_EXPORT)
-      {
-         process_export();
-      }
-      else
-      {
-         write_xml_start(m_mode_action!=MACTION_EXPORT);
-         
-         // The jump instruction will be included as a meta instruction
-         // in the HTML head element, and as such, will be a suggestion.
-         // The standard sfw_templates.xsl will create a meta element in
-         // the HTML head element, but custom implementations are not
-         // bound to that behavior.
-         m_meta_jump = value_from_mode("jump");
-
-         // Detect request types:
-         if (m_mode_action==MACTION_IMPORT)
-         {
-            auto waive = m_mode->seek("waive","session");
-            if (stype==STYPE_NONE && !waive)
-            {
-               const char *sname = m_specsreader->scriptname();
-               const char *mname = m_mode->tag();
-               // Only need length of first string because strcpy() adds terminating \0
-               int lsname = strlen(sname);
-               int len = lsname + strlen(mname) + 2; // 2 for ':' and \0
-               char *mode_identifier = static_cast<char*>(alloca(len));
-               char *p = mode_identifier;
-               strcpy(p, sname);
-               p += lsname;
-               *p++ = ':';
-               strcpy(p, mname);
-                  
-               print_message_as_xml(m_out,
-                                    "error",
-                                    "Session required for import.",
-                                    mode_identifier);
-            }
-            else
-               process_import();
+                                 "Session required for import.",
+                                 mode_identifier);
          }
          else
+            process_import();
+      }
+      else
+      {
+         const ab_handle* ds_branch;
+         const ab_handle* ds_len;
+         if ((ds_branch=m_mode->seek("drop-salt")))
          {
-            const ab_handle* ds_branch;
-            const ab_handle* ds_len;
-            if ((ds_branch=m_mode->seek("drop-salt")))
-            {
-               uint16_t len = 32;
-               if ((ds_len=ds_branch->seek("length")) && ds_len->has_value())
-                  len = ds_len->intvalue();
+            uint16_t len = 32;
+            if ((ds_len=ds_branch->seek("length")) && ds_len->has_value())
+               len = ds_len->intvalue();
                
-               drop_salt_string(&s_mysql, len);
-            }
-            process_response(stype, sstatus);
+            drop_salt_string(&s_mysql, len);
          }
+         process_response(stype, sstatus);
       }
    }
 }
