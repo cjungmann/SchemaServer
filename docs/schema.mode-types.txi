@@ -38,8 +38,8 @@ commands.
 This mode type is unique in that if the named procedure includes
 only one query output, that result will be tagged as a @code{variables}
 result type.  With more than one result, any result typing must be
-explicit.  This mode type is provided only to have a useful
-minimal mode definition.
+explicit.  This mode type was created to service login interactions,
+with a jump that follows a query return.  @xref{Prepare Login Interaction}.
 @item import
 Despite not including the @code{form-} stem, this is a special
 form mode-type that will process the HTTP request as a
