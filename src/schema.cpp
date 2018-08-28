@@ -1011,6 +1011,7 @@ void Result_As_SchemaDoc::pre_fetch_use_result(int result_number,
       print_xml_attribute(m_out, "rndx", result_number);
       if (result_type)
          print_xml_attribute(m_out, "type", result_type);
+      print_xml_attribute(m_out, "row-name", m_row_name);
       ifputs(">\n", m_out);
    }
 }
