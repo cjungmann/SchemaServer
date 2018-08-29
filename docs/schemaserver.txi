@@ -43,6 +43,8 @@ production.
 @contents
 @menu
 * Introduction::
+* Setup::                        Instructions for setting up the server
+                                 and new sites.
 * Mode Types::                   Built-in mode types with explanations
 * Sessions::                     Session handling requires special
                                  setup.
@@ -83,6 +85,7 @@ of the data that knows how to interpret the XML modifications specified
 by the @file{srm} file.  This philosophy keeps @command{schema.fcgi}
 relatively simple and extremely flexible.  
 
+@include schema.setup.txi
 @include schema.mode-types.txi
 @include schema.sessions.txi
 @include schema.forms.txi
