@@ -11,12 +11,12 @@ and optionally in a application-defined support table.
 * Simple Session Type::       Unqualified session
 * Identity Session Type::     Session for authorized or subsection
                               interactions
-* Salted Passwords::          Describes how to use and how @command{schema.fcgi}
-                              implements saveing salted passwords.
 * Establish Session Type::    Allow unauthorized access during login
                               interactions
 * Prepare Login Interaction:: Set up procedures and response modes
                               for authorizing access by login.
+* Salted Passwords::          Describes how to use and how @command{schema.fcgi}
+                              implements saveing salted passwords.
 @end menu
 
 @node Session Types
@@ -83,6 +83,151 @@ invalid session, or non-zero for a valid sessions.
 @code{$jump_not_authorized} specifies the URL to which the
 user will be directed if the session is not valid.
 
+   
+@node Establish Session Type
+@section Establish Session Type
+
+Commonly, an application will put the session specifications
+in a common shared file so all interactions will behave
+consistently.  For an identity session type, this means that
+interactions will be forbidden unless the user's identity is
+established.
+
+This poses a problem for collecting authorization values:
+the @command{schema.fcgi} program will normally refuse to
+serve the form needed to submit them, and the interaction
+that confirms them.  Changing the session type to @emph{none}
+would not work because the session established upon entry
+to @command{schema.fcgi} would be abandoned, losing the
+connection to the 
+
+In this type of case, the global $session-type should be
+overridden by a local $session-type.  Consider the following
+example:
+
+@example
+main
+   type         : form-new
+   session-type : establish
+   schema-proc  : App_Session_Login
+   form-action  : ?login
+   title        : Log into the application
+
+login
+   type         : form-result
+   session-type : establish
+   procedure    : App_Session_Login
+   jump         : mainapp.srm
+@end example
+
+
+@node Prepare Login Interaction
+@section Prepare Login Interaction
+
+The login process requires special handling.  The @code{session-type}
+is set to @code{identity}, in which state @command{schema.fcgi}
+will refuse access.
+
+@example
+
+-- Make sure the @code{pword} field is long enough to hold the
+-- hash result.
+CREATE TABLE User
+(
+   id    INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+   email VARCHAR(128) UNIQUE,
+   pword CHAR(32),
+
+   INDEX(email)
+);
+   
+CREATE TABLE Session_Info
+(
+   id_session INT UNSIGNED NULL,
+   id_email   INT UNSIGNED NULL,
+
+   INDEX(id_session)
+);
+
+CREATE PROCEDURE App_Login_Submit(email VARCHAR(128), pword VARCHAR(24))
+BEGIN
+   DECLARE email_id INT UNSIGNED;
+
+   -- Test the login credentials:
+   SELECT e.id INTO email_id
+     FROM EmailList e
+    WHERE e.email = email
+      AND e.pword = md5(pword)
+    LIMIT 1;
+
+   -- One of three SELECT queries, depending on test outcome:
+   IF email_id IS NOT NULL THEN
+   INSERT INTO Session_Info(id_session, id_email)
+          VALUES(@@session_confirmed_id, id_email);
+
+   -- (also checking for database error)
+      IF ROW_COUNT() = 1 THEN
+         SELECT 0 AS error, 'Success' AS msg;
+      ELSE
+         SELECT 1 AS error, 'Database error' AS msg;
+      END IF;
+   ELSE
+      -- A failed login attempt should also invalidate any current session.
+      -- This is a lazy abandon, the system's session record is left to expire.
+      CALL App_Session_Abandon(@@session_confirmed_id);
+      SELECT 1 AS error, 'email/password mismatch' AS msg;
+   END IF;
+END $$
+@end example
+
+To ensure that authorization checking occurs for all response modes,
+the best practice is to put the session instructions in a shared
+mode in a auto-loaded or included SRM file:
+
+@file{common.srm}
+@example
+$session-type        : identity
+$test-authorized     : App_Check_Authorized;
+$jump-not-authorized : email.srm?login
+@end example
+
+This the the @file{email.srm} file.  Pay attention to the follwing
+instructions that handle the special needs of a login interaction:
+
+@table @strong
+@item type : form-new
+This mode type returns a resultset with a schema for building an
+empty form in which the login information will be entered.
+@item session-type : establish
+This relaxes the identity session type to allow the form to be
+returned and its response to be processed.  Without this, @command{schema.fcgi}
+would refuse to return the login form.
+@item type : form-result
+This special mode type returns a true or false query result,
+with the @code{jump} instruction in login_submit will be honored
+if the procedure returns a non-zero result.
+@end table
+
+@file{email.srm}
+@example
+$include : common.srm
+# The session-type : establish overrides the authorization jump
+# response from the previous two instructions.
+login
+   type         : form-new
+   session-type : establish
+   schema-proc  : App_Login_Submit
+   form-action  : ?login_submit
+
+# In this response mode, the type, session-type, and jump instructions,
+# together cause a unique response from schema.fcgi.
+login_submit
+   type         : form-result
+   session-type : establish
+   procedure    : App_Login_Submit
+   jump         : email.srm?home
+@end example
+
 @node Salted Passwords
 @section Salted Passwords
 
@@ -136,7 +281,7 @@ The choice of using salted MD5 hashes to encrypt passwords can
 reasonably be challenged.  It is suitably secure, but too fast,
 which makes it possible to quickly test many variations and thus
 may make it vulnerable.
-
+p
 The two functions above, @code{ssys_hash_password_with_salt} and
 @code{ssys_confirm_salted_hash} can be replaced with custom
 versions that incorporate different methods.  The two functions
@@ -361,150 +506,25 @@ register_submit
          jump2 : ?register  # mismatched passwords
          jump3 : ?login     # failed to create user
 
-
-@end example
-
-   
-@node Establish Session Type
-@section Establish Session Type
-
-Commonly, an application will put the session specifications
-in a common shared file so all interactions will behave
-consistently.  For an identity session type, this means that
-interactions will be forbidden unless the user's identity is
-established.
-
-This poses a problem for collecting authorization values:
-the @command{schema.fcgi} program will normally refuse to
-serve the form needed to submit them, and the interaction
-that confirms them.  Changing the session type to @emph{none}
-would not work because the session established upon entry
-to @command{schema.fcgi} would be abandoned, losing the
-connection to the 
-
-In this type of case, the global $session-type should be
-overridden by a local $session-type.  Consider the following
-example:
-
-@example
-main
+changepw
+   session-type : identity
    type         : form-new
-   session-type : establish
-   schema-proc  : App_Session_Login
-   form-action  : ?login
-   title        : Log into the application
+   schema-proc  : App_User_Password_Change
+   form-action  : ?changepw_submit
 
-login
-   type         : form-result
-   session-type : establish
-   procedure    : App_Session_Login
-   jump         : mainapp.srm
+changepw_submit
+   session-type : identity
+   type         : form-jump
+   procedure    : App_User_Password_Change
+   drop-salt
+   result
+      type : variables
+      jumps
+         jump0 : HomePage.srm
+         jump1 : ?login     # session expired
+         jump2 : ?changepw  # mismatched passwords
+         jump3 : ?changepw  # invalid credentials
+
+
 @end example
 
-
-@node Prepare Login Interaction
-@section Prepare Login Interaction
-
-The login process requires special handling.  The @code{session-type}
-is set to @code{identity}, in which state @command{schema.fcgi}
-will refuse access.
-
-@example
-
--- Make sure the @code{pword} field is long enough to hold the
--- hash result.
-CREATE TABLE User
-(
-   id    INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-   email VARCHAR(128) UNIQUE,
-   pword CHAR(32),
-
-   INDEX(email)
-);
-   
-CREATE TABLE Session_Info
-(
-   id_session INT UNSIGNED NULL,
-   id_email   INT UNSIGNED NULL,
-
-   INDEX(id_session)
-);
-
-CREATE PROCEDURE App_Login_Submit(email VARCHAR(128), pword VARCHAR(24))
-BEGIN
-   DECLARE email_id INT UNSIGNED;
-
-   -- Test the login credentials:
-   SELECT e.id INTO email_id
-     FROM EmailList e
-    WHERE e.email = email
-      AND e.pword = md5(pword)
-    LIMIT 1;
-
-   -- One of three SELECT queries, depending on test outcome:
-   IF email_id IS NOT NULL THEN
-   INSERT INTO Session_Info(id_session, id_email)
-          VALUES(@@session_confirmed_id, id_email);
-
-   -- (also checking for database error)
-      IF ROW_COUNT() = 1 THEN
-         SELECT 0 AS error, 'Success' AS msg;
-      ELSE
-         SELECT 1 AS error, 'Database error' AS msg;
-      END IF;
-   ELSE
-      -- A failed login attempt should also invalidate any current session.
-      -- This is a lazy abandon, the system's session record is left to expire.
-      CALL App_Session_Abandon(@@session_confirmed_id);
-      SELECT 1 AS error, 'email/password mismatch' AS msg;
-   END IF;
-END $$
-@end example
-
-To ensure that authorization checking occurs for all response modes,
-the best practice is to put the session instructions in a shared
-mode in a auto-loaded or included SRM file:
-
-@file{common.srm}
-@example
-$session-type        : identity
-$test-authorized     : App_Check_Authorized;
-$jump-not-authorized : email.srm?login
-@end example
-
-This the the @file{email.srm} file.  Pay attention to the follwing
-instructions that handle the special needs of a login interaction:
-
-@table @strong
-@item type : form-new
-This mode type returns a resultset with a schema for building an
-empty form in which the login information will be entered.
-@item session-type : establish
-This relaxes the identity session type to allow the form to be
-returned and its response to be processed.  Without this, @command{schema.fcgi}
-would refuse to return the login form.
-@item type : form-result
-This special mode type returns a true or false query result,
-with the @code{jump} instruction in login_submit will be honored
-if the procedure returns a non-zero result.
-@end table
-
-@file{email.srm}
-@example
-$include : common.srm
-# The session-type : establish overrides the authorization jump
-# response from the previous two instructions.
-login
-   type         : form-new
-   session-type : establish
-   schema-proc  : App_Login_Submit
-   form-action  : ?login_submit
-
-# In this response mode, the type, session-type, and jump instructions,
-# together cause a unique response from schema.fcgi.
-login_submit
-   type         : form-result
-   session-type : establish
-   procedure    : App_Login_Submit
-   jump         : email.srm?home
-@end example
