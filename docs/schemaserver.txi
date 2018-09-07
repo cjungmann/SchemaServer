@@ -93,7 +93,7 @@ relatively simple and extremely flexible.
 @include schema.importing.txi
 @include schema.srmscripts.txi
 @include schema.shaping.txi
-
+@include schema.sharedels.txi
 
 @node Autoload
 @chapter Autoload
