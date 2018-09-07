@@ -1,0 +1,7 @@
+@node XML Document Shaping
+@chapter XML Document Shaping
+
+The SchemaServer is designed to offer some flexibility in building XML
+documents.  Extra elements, extra attributes, and custom names are among
+the modifications a developer can exploit to make the document more
+useful and more readable.
