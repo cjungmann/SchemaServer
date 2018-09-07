@@ -2934,7 +2934,7 @@ void Schema::process_response(SESSION_TYPE stype, SESSION_STATUS sstatus)
    try
    {
       // Continue preparing the data:
-      start_document();
+      process_root_branch(this->m_mode,nullptr);
 
       // On return, check if a login attempt failed:
       if (stype==STYPE_ESTABLISH)
@@ -3477,47 +3477,7 @@ void Schema::add_stylesheet_pi(void)
 }
 
 /**
- * @brief Begin processing the document.
- *
- * This function is called after install_response_mode() processes
- * the session stuff (perhaps it should be renamed).
- */
-void Schema::start_document(void)
-{
-   const ab_handle *root = m_mode->seek("root");
-
-   // all paths through code lead here to continue processing the request:
-   auto f = [this, &root](const ab_handle *global_root)
-   {
-      // continue with global_root null or not:
-      process_root_branch(root, global_root);
-   };
-
-   if (root)
-   {
-      const char *name;
-      // If referencing a named global root...
-      if (root->is_setting() && *(name=root->value())=='$')
-      {
-         // ...and there is a global root with the indicated name...
-         // skip past the '$'
-         ++name;
-         auto *info = m_specsreader->seek_mode_info("$root", name);
-         if (info)
-            // ...get the name root
-            m_specsreader->build_branch(info->position(), f);
-         else
-            f(nullptr);
-      }
-      else
-         f(nullptr);
-   }
-   else
-      m_specsreader->seek_mode("$root", f);
-}
-
-/**
- * @brief Called by start_document() once modes are found.
+ * @brief Called by process_response() once modes are found.
  *
  * This functions calls functions in the @ref DocHead_Subprint group to
  * begin the document.  It prints processing instructions (xml-stylesheet)
