@@ -1,0 +1,79 @@
+@node SRM Scripts
+@chapter SRM Scripts
+
+@acronym{SRM, Schema Response Mode} script files contain tree-like
+hierarchical text that inform @command{schema.fcgi} how to process
+HTTP requests.
+
+Each active line is either a handle or an property.
+
+A @dfn{handle} is an element with contents that may be either
+@dfn{properties} or other handles.  A @dfn{property} is a line that
+has a @dfn{tag} and a @dfn{value}.
+
+@example
+handle
+   tag : value
+@end example
+
+Relationships between elements in an SRM file are indicated by indentation.  Child properties
+that belong to a handle are indented to the same number of white spaces as their siblings.
+A set of contents is terminated an element at a lower level of indentation or the end of the
+file.  In the following example, @emph{household} is a handle that introduces a collection of
+several @emph{member} handle elements, which themselves introduce properties.
+
+Under a handle, all elements of the same indentation level are first-generation children of
+the handle element.  Each collection of elements under a handle are terminated by an element
+of the same or lower indentation level as the handle that introduced the collection.
+
+The collection of household member Charles' properties are terminated by the introduction of
+member Caroline.
+
+Within any collection of elements, the relationship between parent and child elements is determined
+by the indentation level.  Differing indentation levels under related elements is not significant.
+For example, even though the properties of Caroline and Alonzo have the same number of indentation
+spaces, they will not be grouped together because of the intervening higher-level elements.
+
+@example
+household
+   member
+      formal-name : Charles
+      nickname : Pa
+      adult : true
+   member
+         formal-name : Caroline
+         nickname : Ma
+         adult : true
+   member
+      formal-name : Mary
+   member
+      formal-name : Laura
+      nickname : half-pint
+      spouse
+         formal-name : Alonzo
+         nickname : Manly
+   member
+      formal-name : Caroline
+      nickname : Carrie
+      name : nails
+      class : supply
+@end example
+
+The following example is using actual SchemaServer properties.
+
+@example
+list
+   procedure : App_Person_List
+   type : table
+   on_line_click : ?edit
+   schema
+      field : id
+         readOnly : true
+      field : fname
+         label : First Name
+      field : lname
+         label : Last Name
+@end example
+
+SRM files contain @emph{modes}, each of which consist of 
+

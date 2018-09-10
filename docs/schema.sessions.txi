@@ -1,0 +1,530 @@
+@node Sessions
+@chapter Sessions
+
+Sessions keep track of individual users in order to allow them
+to return to work already done.  Upon the establishment of a new
+session, a record is automatically created in @dfn{SSYS_SESSION},
+and optionally in a application-defined support table.
+
+@menu
+* Session Types::             Explain the basic session types
+* Simple Session Type::       Unqualified session
+* Identity Session Type::     Session for authorized or subsection
+                              interactions
+* Establish Session Type::    Allow unauthorized access during login
+                              interactions
+* Prepare Login Interaction:: Set up procedures and response modes
+                              for authorizing access by login.
+* Salted Passwords::          Describes how to use and how @command{schema.fcgi}
+                              implements saveing salted passwords.
+@end menu
+
+@node Session Types
+@section Session Types
+
+There are @dfn{simple} and @dfn{identity} sessions.
+
+@subheading Simple Session
+
+A simple session is established silently when specified.  This
+type of session is used for multiple-step interactions that do
+not require authorization.
+
+@subheading Identity Session
+
+An identity session is used when it is important to establish
+the user, or at least the user's intentions.  It is most
+commonly used when an application requires that a user login
+
+
+@node Simple Session Type
+@section Simple Session Type
+
+A simple session is established by a single SRM instruction,
+@code{$session-type : simple}  This instruction will use an
+established session or create a new one if needed.
+
+The primary reason for establishing a simple session is to
+track multiple-step interactions.  In particular, an import
+interaction consists of three steps:
+
+@enumerate
+@item
+Upload the file
+@item
+Review the upload
+@item
+Commit or abandon the upload.
+@end enumerate
+
+
+@node Identity Session Type
+@section Identity Session Type
+
+An identity session is primarily for logged-in, authorized
+access to an application.  It can also be used to set 
+session variables that help direct user interactions.
+
+The main characteristic of an identity session is that
+the SRM file will include a remedy for an expired session.
+
+@example
+$session-type        : identity
+$test_authorized     : App_Session_Bespoke_Checker
+$jump_not_authorized : login.srm
+@end example
+
+The @code{$test_authorized} instruction names the procedure
+that can test if a session is still valid.  The procedure
+takes a single parameter, an INT UNSIGNED with the session
+id, and returns via a query result, 0 for an expired or
+invalid session, or non-zero for a valid sessions.
+
+@code{$jump_not_authorized} specifies the URL to which the
+user will be directed if the session is not valid.
+
+   
+@node Establish Session Type
+@section Establish Session Type
+
+Commonly, an application will put the session specifications
+in a common shared file so all interactions will behave
+consistently.  For an identity session type, this means that
+interactions will be forbidden unless the user's identity is
+established.
+
+This poses a problem for collecting authorization values:
+the @command{schema.fcgi} program will normally refuse to
+serve the form needed to submit them, and the interaction
+that confirms them.  Changing the session type to @emph{none}
+would not work because the session established upon entry
+to @command{schema.fcgi} would be abandoned, losing the
+connection to the 
+
+In this type of case, the global $session-type should be
+overridden by a local $session-type.  Consider the following
+example:
+
+@example
+main
+   type         : form-new
+   session-type : establish
+   schema-proc  : App_Session_Login
+   form-action  : ?login
+   title        : Log into the application
+
+login
+   type         : form-result
+   session-type : establish
+   procedure    : App_Session_Login
+   jump         : mainapp.srm
+@end example
+
+
+@node Prepare Login Interaction
+@section Prepare Login Interaction
+
+The login process requires special handling.  The @code{session-type}
+is set to @code{identity}, in which state @command{schema.fcgi}
+will refuse access.
+
+@example
+
+-- Make sure the @code{pword} field is long enough to hold the
+-- hash result.
+CREATE TABLE User
+(
+   id    INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+   email VARCHAR(128) UNIQUE,
+   pword CHAR(32),
+
+   INDEX(email)
+);
+   
+CREATE TABLE Session_Info
+(
+   id_session INT UNSIGNED NULL,
+   id_email   INT UNSIGNED NULL,
+
+   INDEX(id_session)
+);
+
+CREATE PROCEDURE App_Login_Submit(email VARCHAR(128), pword VARCHAR(24))
+BEGIN
+   DECLARE email_id INT UNSIGNED;
+
+   -- Test the login credentials:
+   SELECT e.id INTO email_id
+     FROM EmailList e
+    WHERE e.email = email
+      AND e.pword = md5(pword)
+    LIMIT 1;
+
+   -- One of three SELECT queries, depending on test outcome:
+   IF email_id IS NOT NULL THEN
+   INSERT INTO Session_Info(id_session, id_email)
+          VALUES(@@session_confirmed_id, id_email);
+
+   -- (also checking for database error)
+      IF ROW_COUNT() = 1 THEN
+         SELECT 0 AS error, 'Success' AS msg;
+      ELSE
+         SELECT 1 AS error, 'Database error' AS msg;
+      END IF;
+   ELSE
+      -- A failed login attempt should also invalidate any current session.
+      -- This is a lazy abandon, the system's session record is left to expire.
+      CALL App_Session_Abandon(@@session_confirmed_id);
+      SELECT 1 AS error, 'email/password mismatch' AS msg;
+   END IF;
+END $$
+@end example
+
+To ensure that authorization checking occurs for all response modes,
+the best practice is to put the session instructions in a shared
+mode in a auto-loaded or included SRM file:
+
+@file{common.srm}
+@example
+$session-type        : identity
+$test-authorized     : App_Check_Authorized;
+$jump-not-authorized : email.srm?login
+@end example
+
+This the the @file{email.srm} file.  Pay attention to the follwing
+instructions that handle the special needs of a login interaction:
+
+@table @strong
+@item type : form-new
+This mode type returns a resultset with a schema for building an
+empty form in which the login information will be entered.
+@item session-type : establish
+This relaxes the identity session type to allow the form to be
+returned and its response to be processed.  Without this, @command{schema.fcgi}
+would refuse to return the login form.
+@item type : form-result
+This special mode type returns a true or false query result,
+with the @code{jump} instruction in login_submit will be honored
+if the procedure returns a non-zero result.
+@end table
+
+@file{email.srm}
+@example
+$include : common.srm
+# The session-type : establish overrides the authorization jump
+# response from the previous two instructions.
+login
+   type         : form-new
+   session-type : establish
+   schema-proc  : App_Login_Submit
+   form-action  : ?login_submit
+
+# In this response mode, the type, session-type, and jump instructions,
+# together cause a unique response from schema.fcgi.
+login_submit
+   type         : form-result
+   session-type : establish
+   procedure    : App_Login_Submit
+   jump         : email.srm?home
+@end example
+
+@node Salted Passwords
+@section Salted Passwords
+
+To eliminate the need for a script processor like PHP, it was
+necessary to implement a password decryption utility into
+@command{schema.fcgi}.
+
+Password encryption is built into @command{schema.fcgi} using
+salted and MD5 hashed hash strings.  To improve security, it is
+recommended that the salt and the hash be stored in separate
+tables.  This @url{https://crackstation.net/hashing-security.htm, CrackStation}
+article endorses the difficulty of cracking a password
+thus encrypted.
+
+@menu
+* Default Password Encryption Procedures::
+* Encrypted Password Example::
+@end menu
+
+@node Default Password Encryption Procedures
+@subsection Default Password Encryption Procedures
+
+There are three MySQL functions/procedures in @file{sys_procs.sql}
+that handle password encryption.
+
+@table @strong
+@item procedure ssys_drop_salt_string(salt_string VARCHAR(255))
+This procedure is called by @command{schema.fcgi} with the inclusion
+of the @code{drop-salt} instruction in a response mode.  The session
+variable @code{@@dropped-salt} should be saved, along with the
+encrypted password, in order to confirm the match of a password.
+
+@item function ssys_hash_password_with_salt(password VARCHAR(255), salt_string VARCHAR(255))
+This function returns an encrypted value whose data type should match
+the database field in which the value will be stored and also match the
+first parameter of function @code{ssys_confirm_salted_hash}.  This
+function can be replaced with a custom version that uses a different
+encryption protocol.
+
+@item function ssys_confirm_salted_hash(saved_hash BINARY(16), saved_salt VARCHAR(255), password VARCHAR(255))
+This function is meant to be called by application procedures
+to indicate if a password matches the encrypted value.  The data type
+of the first parameter, @code{saved_hash}, should match the database
+field in which the value will be saved, and the return value of
+function @code{ssys_hash_password_with_salt()}.  This function
+can be replaced with a custom version that uses a different
+encryption protocol and encryption field data type.
+@end table
+
+The choice of using salted MD5 hashes to encrypt passwords can
+reasonably be challenged.  It is suitably secure, but too fast,
+which makes it possible to quickly test many variations and thus
+may make it vulnerable.
+p
+The two functions above, @code{ssys_hash_password_with_salt} and
+@code{ssys_confirm_salted_hash} can be replaced with custom
+versions that incorporate different methods.  The two functions
+are only called by application procedures, so replacement functions
+can replace the default or use entirely diffent function names.
+
+@node Encrypted Password Example
+@subsection Encrypted Password Example
+
+An example implementation of a salted password protocol consists
+of several steps as shown below.
+
+@subsubheading MySQL Encryption Tables
+
+It is recommeded to separate the salt from the hash for security.
+If someone manages to get the User table, they may not know about
+the name or even existence of a linked salt table, making attempts
+to decrypt the password hashes even more difficult.
+
+@example
+CREATE TABLE Salt
+(
+   id   INT UNSIGNED NOT NULL PRIMARY KEY,
+   salt CHAR(32)
+);
+
+-- Note that the hash value matches the return value
+-- of function ssys_hash_password_with_salt().
+CREATE TABLE User
+(
+   id   INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+   hash  BINARY(16),
+   email VARCHAR(128),
+   UNIQUE KEY (email)
+);
+@end example
+
+@subsubheading MySQL Encryption Procedures
+
+The following procedures are application procedures that
+call the default functions @pxref{Default Password Encryption Procedures}
+to support encryption interactions.
+
+The procedures are skeleton procedures, containing the
+minimum required code to demonstrate the concepts.
+Procedures for a real site will include more error-checking.
+
+These examples use an error reporting protocol of SELECTing
+the results. This protocol is recognized by the Schema Framework
+for error reporting and result jumps.  The SELECT statement
+should have an integer column named @code{error} and a string
+named @code{msg}, with error=0 for success, other integers for
+an error.
+
+@example
+DELIMITER $$
+
+CREATE PROCEDURE App_User_Create(email VARCHAR(128),
+                                 pword1 VARCHAR(40),
+                                 pword2 VARCHAR(40))
+proc_block: BEGIN
+   DECLARE newid INT UNSIGNED;
+
+   -- exception error for developer:
+   IF @@dropped_salt IS NULL THEN
+      -- Fatal error, use non-recoverable termination
+      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Missing drop-salt instruction.';
+   END IF;
+
+   -- Early termination if not in a valid session:
+   IF NOT(ssys_current_session_is_valid()) THEN
+      SELECT 1 AS error, 'Expired Session' AS msg;
+      LEAVE proc_block;
+   END IF;
+
+   -- Confirm user can successfuly retype the password
+   IF STRCMP(pword1, pword2) THEN
+      SELECT 2 AS error, 'Mismatched Passwords' AS msg;
+      LEAVE proc_block;
+   END IF;
+
+   INSERT INTO User(email, hash)
+   VALUES(email,
+          ssys_hash_password_with_salt(pword1, @@dropped_salt);
+
+   IF ROW_COUNT() > 0 THEN
+      SET newid = LAST_INSERT_ID();
+      INSERT INTO Salt(id, salt)
+        VALUES(newid, @@dropped_salt);
+
+      SELECT 0 AS error, 'Success' AS msg;
+   ELSE
+      SELECT 3 AS error,
+             CONCAT('Failed to create account for ', email, '.') AS msg;
+   END IF;
+END $$
+
+CREATE PROCEDURE App_User_Login(email VARCHAR(128),
+                                pword VARCHAR(40))
+proc_block: BEGIN
+   DECLARE user_id INT UNSIGNED;
+   DECLARE user_hash BINARY(16);
+   DECLARE user_salt CHAR(32);
+
+   -- Early termination if not in a valid session:
+   IF NOT(ssys_current_session_is_valid()) THEN
+      SELECT 1 AS error, 'Expired Session' AS msg;
+      LEAVE proc_block;
+   END IF;
+
+   SELECT i.id, u.hash, s.salt
+     INTO user_id, user_hash, user_salt
+     FROM User u
+          INNER JOIN Salt s ON u.id = s.id
+    WHERE u.email = email;
+
+   IF user_id IS NOT NULL
+        AND ssys_confirm_salted_hash(user_hash, user_salt_pword) THEN
+
+      -- With confirmed password, this is where the
+      -- session info table should be updated to record
+      -- the successful login.
+
+      SELECT 0 AS error, 'Success' AS msg;
+   ELSE
+      SELECT 2 AS error, 'Invalid credentials' AS msg;      
+   END IF;
+END $$
+
+CREATE PROCEDURE App_User_Password_Change(pword VARCHAR(40),
+                                          pword1 VARCHAR(40),
+                                          pword2 VARCHAR(40))
+BEGIN
+   DECLARE user_hash BINARY(16);
+   DECLARE user_salt CHAR(32);
+   
+   -- exception error for developer, use fresh salt:
+   IF @@dropped_salt IS NULL THEN
+      -- Fatal error, use non-recoverable termination
+      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Missing drop-salt instruction.';
+   END IF;
+
+   -- Early termination if not in a valid session:
+   IF NOT(ssys_current_session_is_valid()) THEN
+      SELECT 1 AS error, 'Expired Session' AS msg;
+      LEAVE proc_block;
+   END IF;
+
+   -- Confirm user can successfuly retype the password
+   IF STRCMP(pword1, pword2) THEN
+      SELECT 2 AS error, 'Mismatched Passwords' AS msg;
+      LEAVE proc_block;
+   END IF;
+
+   -- get current hash and salt to confirm password
+   SELECT u.hash, s.salt
+     INTO user_hash, user_salt
+     FROM User u
+          INNER JOIN Salt s ON u.id = s.id
+    WHERE u.id = @@session_confirmed_id;
+
+   IF ssys_confirm_salted_hash(user_hash, user_salt, pword) THEN
+      UPDATE User
+         SET hash = ssys_hash_password_with_salt(pword1, @@dropped_salt)
+       WHERE id = @@session_confirmed_id;
+
+      UPDATE Salt
+         SET salt = @@dropped_salt
+       WHERE id = @@session_confirmed_id;
+
+      SELECT 0 AS error, 'Success' AS msg;
+   ELSE
+      SELECT 3 AS error, 'Invalid credentials' AS msg;      
+   END IF;
+END $$
+@end example
+
+
+@subheading SRM Reponse Modes
+
+The following response modes use the procedures defined
+above.  Note how the result is defined with @code{jumps}
+that match the @code{error} column of the SELECT made to
+notify the user of the result of the procedures.  The varied
+error numbers can jump to different pages.
+
+@example
+login
+   session-type : establish
+   type         : form-new
+   schema-proc  : App_User_Login
+   form-action  : ?login_submit
+
+login_submit
+   session-type : establish
+   type         : form-jump  # or form-submit
+   procedure    : App_User_Login
+   drop-salt
+   result
+      type : variables
+      jumps
+         jump0 : HomePage.srm
+         jump1 : ?login     # session expired
+         jump2 : ?login     # invalid credentials
+
+register
+   session-type : establish
+   type         : form-new
+   schema-proc  : App_User_Create
+   form-action  : ?register_submit
+
+register_submit
+   session-type : establish
+   type         : form-jump  # or form-submit
+   procedure    : App_User_Create
+   drop-salt
+   result
+      type : variables
+      jumps
+         jump0 : HomePage.srm
+         jump1 : ?login     # session expired
+         jump2 : ?register  # mismatched passwords
+         jump3 : ?login     # failed to create user
+
+changepw
+   session-type : identity
+   type         : form-new
+   schema-proc  : App_User_Password_Change
+   form-action  : ?changepw_submit
+
+changepw_submit
+   session-type : identity
+   type         : form-jump
+   procedure    : App_User_Password_Change
+   drop-salt
+   result
+      type : variables
+      jumps
+         jump0 : HomePage.srm
+         jump1 : ?login     # session expired
+         jump2 : ?changepw  # mismatched passwords
+         jump3 : ?changepw  # invalid credentials
+
+
+@end example
+

@@ -1,0 +1,5 @@
+@node Forms
+@chapter Forms
+
+This chapter is an empty target placeholder for the main menu and
+cross-referencing.

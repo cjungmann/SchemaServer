@@ -1,0 +1,530 @@
+\input texinfo
+@setfilename schemaserver.info
+@settitle Using SchemaServer
+
+@dircategory Schema Framework Documents
+@direntry
+* SchemaServer: (schemaserver).       Documentation for schema.fcgi Server.
+@end direntry
+
+@copying
+Offline Manual for SchemaServer
+
+Copyright @copyright{} 2018 Charles P Jungmann
+@end copying
+
+@titlepage
+@title Using SchemaServer
+@author Charles P. Jungmann
+@page
+@insertcopying
+@end titlepage
+
+
+@ifnottex
+@node Top
+@top Using SchemaServer
+
+This manual is an offline reference for the SchemaServer component,
+@code{schema.fcgi}.  This manual includes instructions for installing
+and testing @code{schema.fcgi}, SRM script syntax usage and examples,
+and command line options for debugging scripts.
+
+I apologize to anyone finding this manual who hopes for a comprehensive
+treatment in the use of SchemaServer.  I began this manual to create
+@emph{offline} documentation that I can refer to when I need a
+reminder of syntax or usage.
+
+As long as this remains a personal project, I will have to limit my
+time writing documentation in favor of development, testing, and
+production.
+@end ifnottex
+
+@contents
+@menu
+* Introduction::
+* Setup::                        Instructions for setting up the server
+                                 and new sites.
+* Mode Types::                   Built-in mode types with explanations
+* Sessions::                     Session handling requires special
+                                 setup.
+* Forms::                        Using forms to collect user data
+* Importing::                    Discussion of how to import data
+* SRM Scripts::                  Define and describe SRM files
+* XML Document Shaping::         Modify response mode output
+* Shared Elements::              Define once and use multiple times
+* Autoload::                     Using Autoload Feature
+* Auto-called MySQL Procedures:: Directly-called Procedures
+* Sample Files::                 Simple Examples to Aid Development
+@end menu
+
+@node Introduction
+@chapter Introduction
+
+SchemaServer is a FastCGI component, named @dfn{schema.fcgi}, that
+serves XML documents from MySQL procedure results in response to HTTP
+requests.
+
+@command{schema.fcgi} reads script files with the extension
+@acronym{srm, Schema Response Mode}, to know how to interpret HTTP
+requests.  Under the direction of the @file{srm} script files,
+@command{schema.fcgi} includes schemas that describe the names and data
+types of procedure parameters and query result columns.  The schema
+information can be used to build forms and tables with which the
+end user can interact with the MySQL data.
+
+The @file{srm} file can modify the default XML output in several ways
+to provide detailed instructions about how the end user will see
+and interact with the data.
+
+Outside of a few reserved words that transmit required information or
+handle specific situations, the contents of @file{srm} files are
+simply converted to XML in the returned XML document.
+
+The @file{srm} script is written with consideration of the consumer
+of the data that knows how to interpret the XML modifications specified
+by the @file{srm} file.  This philosophy keeps @command{schema.fcgi}
+relatively simple and extremely flexible.  
+
+@include schema.setup.txi
+@include schema.mode-types.txi
+@include schema.sessions.txi
+@include schema.forms.txi
+@include schema.importing.txi
+@include schema.srmscripts.txi
+@include schema.shaping.txi
+@include schema.sharedels.txi
+
+@node Autoload
+@chapter Autoload
+
+The autoload feature provides a means to implicitely include shares into
+certain mode types.
+
+@section Autoload as Include File
+
+When an @file{autoload.srm} file is included in a SchemaServer
+application directory, the contents of the @file{autoload.srm} file will
+be included into every call to an SRM file in that directory.
+
+Just like any include file, the @file{autoload.srm} file can define
+global settings like @code{$xml-stylesheet} or @code{$database}, as well
+as @code{$shared} modes to be included in other contexts.
+
+@section Autoload as Implicit Share
+
+The true benefit of using an @file{autoload.srm} file are the
+implicit inclusions of shared modes into tagged contexts.  When a
+response mode includes an @code{autoload_tag} property,
+@command{schema.fcgi}  will look for a shared mode with a name that
+starts as @emph{autoload_} and finishes with the @code{autoload_tag}
+value.  For example, if a response mode includes a property
+@code{autoload_tag : page}, it will look for a shared mode named
+@code{autoload_page}.  The share will be as a siblings share at
+the point of the @code{autoload_tag} element.
+
+@subsection Autoload Shares are Optional
+
+Unlike other shares that generate an error if the share cannot be
+found, autoload shares are optional.  If the implied share name is
+not found, the mode reconciliation will quietly continue processing.
+
+@section Navigation Autoload Example
+
+The inspiration for adding the autoload feature are the files generated
+by the @command{gensfw} command.  Although external SRM files can be
+included with the @code{Set SRM Globals} button, there is no way to
+invoke the shares in the generated response modes.  Having an implicitely
+invoked share makes it possible to have custom elements in a generated
+SRM file without having to customize the SRM file contents.
+
+The most obvious example is a navigation definition that should be
+included on all top-level pages in an application.  This example is
+implemented by the @command{gensfw} output.
+
+@subsection gensfw SRM Files
+
+@command{gensfw} can create scripts for MySQL procedures and SchemaServer
+response modes to manage a table.  It will provide for a list interaction
+that shows the contents of the table, and dialog interactions for adding,
+editing, and deleting records in the table, as well as import and
+export dialogs.
+
+The list interaction is a top-level page that @command{gensfw}, by
+default, sets the @code{autoload_tag} property to ``page''.  When
+@command{schema.fcgi} is reconciling the shares, it will look for a
+@code{$shared : autoload_page} handle and include it if found.
+
+The shared elements will be inserted as a siblings share.
+
+@subheading autoload.srm
+@example
+$shared : autoload_page
+   navigation
+      target
+         label : Person
+         url   : Person.srm
+      target
+         label : Residence
+         url   : Residence.srm
+@end example
+
+@subheading Person.srm
+@example
+list
+   type      : table
+   procedure : App_Person_List
+   autoload_tag : page
+@end example
+
+@subheading Effective Response Mode
+@example
+list
+   type      : table
+   procedure : App_Person_List
+   navigation
+      target
+         label : Person
+         url   : Person.srm
+      target
+         label : Residence
+         url   : Residence.srm
+@end example
+
+
+@node Auto-called MySQL Procedures
+@chapter Auto-called MySQL Procedures
+
+There are several procedures that are called directly by the
+@command{schema.fcgi}.  Some are called to discover a procedure's
+parameters names and data types.  Other procedures are called to
+prepare sessions.
+
+Most of the procedures discussed in this chapter are found in the
+script @file{sys_procs.sql}.
+
+@menu
+* Procedure Discovery Procedures::
+* Session Handling Procedures::
+* Password Handling Procedures::
+* Import Handling Procedures::
+@end menu
+
+@node Procedure Discovery Procedures
+@section Procedure Discovery Procedures
+
+@dfn{ssys_get_procedure_params}
+@dfn{ssys_get_column_dtds}
+@dfn{ssys_get_procedure}
+
+This section is a place-holder for future content.
+
+
+@node Session Handling Procedures
+@section Session Handling Procedures
+
+In addition to procedures, there is a built-in table,
+@dfn{SSYS_SESSION} that is the foundation for tracking
+sessions.
+
+When sessions are being used, @command{schema.fcgi} calls several
+procedures before any modes can be executed.  There are two main
+reasons for this:
+
+@enumerate
+@item
+To confirm authorization before further access is allowed.
+@item
+To preparing, restoring, and clearing session variables before
+application-specific procedures are called.
+@item
+@end enumerate
+
+@menu
+* Required Session Procedures::
+* Optional Session Procedures::
+@end menu
+
+@node Required Session Procedures
+@subsection Required Session Procedures
+
+The following functions are directly called by @command{schema.fcg}
+when working with sessions.  @file{sys_procs.sql} includes empty
+version of these function to ensure they can be called, but these
+functions should be overwritten to implement application-specific 
+session handling.
+
+@subheading App_Session_Start(session_id INT UNSIGNED)
+The procedure is called when a new session is established.
+It is the opportunity to create a session record in an
+application-specific table.
+@*
+@strong{Parameters} @*
+@table @strong
+@item session_id
+The id of a new or recycled record in the @code{SSYS_SESSION}
+table that manages the new session.
+@end table
+@*
+@strong{Result Selection} @*
+The result selection of this procedure is not used.
+
+@subheading App_Session_Restore(session_id INT UNSIGNED)
+If the appropriate SRM flags are set, this procedure will be
+called before the users' requests are applied to a mode
+procedure.  The procedure should prepare any session variables,
+pulling information from the application-specific table as
+identified by the @code{session_if} parameter.
+
+When this function is called, the session's existence and
+validity have already been established.
+@*
+@strong{Parameters} @*
+@table @strong
+@item session_id
+The id of a confirmed open session.
+@end table
+@*
+@strong{Result Selection} @*
+The result selection of this procedure is not used.
+
+@subheading App_Session_Cleanup()
+This procedure is called at the conclusion of a request.
+To prevent unauthorized access to what may be private or
+sensitive session data, this procedure should null-out all
+session variables to leave a blank slate for following
+requests to the same instance of @command{schema.fcgi}.
+@*
+@strong{Parameters} @*
+@table @strong
+@item session_id
+The id of a confirmed open session.
+@end table
+@*
+@strong{Result Selection} @*
+The result selection of this procedure is not used.
+
+@subheading App_Session_Abandon(session_id INT UNSIGNED)
+This procedure is called when a session times-out or when
+a user explicitely requests to logout of the session.
+
+This procedure should remove session information that was
+created in the @code{App_Session_Start} procedure, deleting
+or clearing records in the application-specfic session
+tables as appropriate.
+@*
+@strong{Parameters} @*
+@table @strong
+@item session_id
+The id of a confirmed open session.
+@end table
+@*
+@strong{Result Selection} @*
+The result selection of this procedure is not used.
+
+@node Optional Session Procedures
+@subsection Optional Session Procedures
+
+Some procedures will only be called if defined in an SRM file.
+The main examples of this relate to authorized access, where
+procedures may named for certain purposes.
+
+@subsubheading $test_authorized
+The value of this instruction should be a procedure that will
+report on the authorization of a session.  If specified as a
+global instruction in the SRM file
+ with the
+If a global instruction @strong{$test_authorized} is specified,
+the named procedure will be called by @command{schema.fcgi}
+prior to calling procedure @code{App_Session_Restore}.  A common
+name for this procedure is @code{App_Session_Confirm}.@*
+@*
+@strong{Parameters}
+@table @strong
+@item session_id
+The cookie-passed id of an alleged session.
+@end table
+@*
+@strong{Result Selection} @*
+Select an INT value greater than 0 to indicate a valid session.
+A 0 or NULL selection will be interpreted as a rejection of the
+specified session.
+
+@node Password Handling Procedures
+@section Password Handling Procedures
+
+This section is a place-holder for future content.
+
+@node Import Handling Procedures
+@section Import Handling Procedures
+
+@dfn{ssys_default_import_removal}
+@dfn{ssys_default_import_confirm}
+
+This section is a place-holder for future content.
+
+@node Sample Files
+@chapter Sample Files
+
+These sample files are provided to jumpstart the development
+of a new @command{schema.fcgi} application.  It is not necessary to
+copy the contents of the samples, but rather use as a reminder
+of what things can be included in the file type, to be used or
+discarded as appropriate.
+
+@menu
+* MySQL Sample Files::
+* SRM Sample Files::
+@end menu
+
+@node MySQL Sample Files
+@section MySQL Sample Files
+
+@menu
+* Creating Tables::
+* Creating Procedures::
+@end menu
+
+MySQL is fundamental to @command{schema.fcgi}, and proper care in
+setting up the MySQL tables and procedures, particularly in following
+@code{schemafw} conventions, will make future development easier.
+
+@node Creating Tables
+@subsection Creating Tables
+
+Tables are usually related to other tables, with tables joined through
+and integer field that holds a reference to the @var{id} field of the
+related table.
+
+In this example, the @samp{Person} table is associated with an unseen
+account table through the @var{id_account} field.  The @code{INDEX}
+line is very important to speed access to the person records of a
+given account.
+
+@example
+SET default_storage_engine=InnoDB;
+
+CREATE TABLE Person
+(
+   id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+   id_account INT UNSIGNED NOT NULL,
+   fname      VARCHAR(40),
+   lname      VARCHAR(40),
+
+   INDEX(id_account)
+);
+@end example
+
+@node Creating Procedures
+@subsection Create Procedures
+
+MySQL procedures define the interface between the user and the data,
+so the design of the procedures is very important.  This section will
+show several of the fundamental procedure types.
+
+The procedures in the section will use the Person table defined in the
+earlier @ref{Creating Tables, Creating Tables} section.
+
+@menu
+* List Records Procedure::
+* Add Record Procedure::
+* Delete Record Procedure::
+@end menu
+
+@node List Records Procedure
+@subsubsection List Records Procedure
+
+List procedures are generally used to describe a landing page in an
+application, from which records can be viewed are to which new records
+can be added.
+
+The following sample procedure is designed to return a single record as
+well the entire collection.  This practice provides data consistency for
+updating or adding records.  If these two tasks were broken into two
+procedures, changes to either would have to be incorporated into the
+other.
+
+@example
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS App_Person_List $$
+CREATE PROCEDURE App_Person_List(person_id INT UNSIGNED)
+BEGIN
+   SELECT p.id, p.fname, p.lname
+     FROM Person p
+    WHERE id_account = @@session_confirmed_account
+      AND (person_id IS NULL OR p.id = person_id);
+END $$
+
+DELIMITER ;
+@end example
+
+@node Add Record Procedure
+@subsubsection Add Record Procedure
+
+@example
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS App_Person_Add $$
+CREATE PROCEDURE App_Person_Add(fname VARCHAR(40),
+                                lname VARCHAR(40))
+BEGIN
+   INSERT INTO
+        Person (id_account, fname, lname)
+        VALUES (@@session_confirmed_account, fname, lname);
+
+   IF ROW_COUNT() > 0 THEN
+      CALL App_Person_List(LAST_INSERT_ID());
+   END IF;
+END $$
+
+DELIMITER ;
+@end example
+
+
+@node Delete Record Procedure
+@subsubsection Delete Record Procedure
+
+I would like to call out three concepts in the following
+sample.
+
+@enumerate
+@item
+Using more than just the @var{id} value to help prevent mistakes
+or to inhibit malicous deletes using random @var{id} values.
+
+@item
+The FROM clause is using @code{USING AS} allow us to
+distinguish between like-named parameters and field.
+
+@item
+The @code{SELECT ROW_COUNT() AS deleted} provides a ``return value''
+to indicate success or failure of the delete.
+
+@end enumerate
+
+@example
+DROP PROCEDURE IF EXISTS App_Keyword_Delete $$
+CREATE PROCEDURE App_Keyword_Delete(id INT UNSIGNED,
+                                    lname VARCHAR(20))
+BEGIN
+   DELETE
+     FROM p USING Person AS p
+    WHERE p.id_account=@@session_confirmed_account
+      AND p.id=id
+      AND p.lname=lname;
+
+   SELECT ROW_COUNT() AS deleted;    
+END $$
+@end example
+
+
+
+@node SRM Sample Files
+@section SRM Sample Files
+
+This section is a place-holder for future content.
+
+
+
+@bye

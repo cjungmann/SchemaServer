@@ -733,7 +733,6 @@ protected:
    };
 
    void start_special_procedure(void);
-   void start_document(void);
    void process_root_branch(const ab_handle *mode_root,
                             const ab_handle *global_root,
                             bool import_confirm = false);

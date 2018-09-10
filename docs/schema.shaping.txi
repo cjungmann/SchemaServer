@@ -1,0 +1,139 @@
+@node XML Document Shaping
+@chapter XML Document Shaping
+
+The SchemaServer is designed to offer some flexibility in building XML
+documents.  Extra elements, extra attributes, and custom names are among
+the modifications a developer can exploit to make the document more
+useful and more readable.
+
+@menu
+* Customized Element Names::
+* Adding Elements and Attributes::
+@end menu
+
+@node Customized Element Names
+@section Customized Element Names
+
+The primary elements can be renamed.  The primary elements are the
+document element, with the default name @emph{resultset}, the
+element that represents a query result, default name @emph{result},
+and a query result row, with the default name @emph{row}.
+
+@subsubheading Renaming the Document Element
+
+The default name of the document element is @code{resultset}, but can
+be alternatively named with a @code{tag} instruction, either as a global
+instruction, or as a branch in a response mode.
+
+@example
+# Example SRM file
+$tag   : universe
+
+list
+   type      : table
+   procedure : App_Item_List
+   tag       : list
+@end example
+
+This example shows both forms of @code{tag}.  There is a global
+@code{$tag} element, set to @emph{universe} in this example, and a
+@code{tag} instruction in the @emph{list} mode, set to @emph{list}.
+
+As usual, more specific instructions take priority over less specific.
+In this case, that means that the @code{tag} instruction in the
+@emph{list} mode will win out, and the document element will be named
+@emph{list}.  If the @code{tag} is left out of the @emph{list} mode,
+then the globag @code{$tag} instruction will be honored, and the 
+document element will be named @emph{universe}.
+
+@subsubheading Renaming the Result Element
+
+The @emph{result} element that is produced by a query in a procedure,
+is generally called @emph{result}.  When a procedure has only a single
+result, there is generally no benefit to renaming the result.  However,
+when a procedure execute multiple queries, it is often helpful to
+change result names to a descriptive word.  A descriptive name is easier
+to reference in an XSL stylesheet, and it can be consistent even when
+the @@rndx value might change.
+
+The name of the @emph{result} element is changed with a @code{name}
+instruction, as shown in the following example:
+
+@example
+list
+   type : table
+   procedure : App_Item_List
+   result : 1
+      name : items
+@end example
+
+The benefit of renaming results is more apparent in a mode that calls
+a procedure with many query results.  Some queries may return several
+datasets to be joined on the client through the framework stylesheets.
+
+@example
+page
+   type : table
+   procedure : App_Company_Inventory
+   result : 1
+      name : items
+   result : 2
+      name : categories
+   result : 3
+      name : links
+@end example
+
+Having named the results makes a more readable XML document as well
+as a more semantic XSL stylesheet that interprets the output.  An added
+benefit is that using the name makes the position irrelevant, and the
+queries can thus be moved around at the convenience of the developer.
+
+@subheading Renaming the Query Rows
+
+The final rename option is for child elements of the result.  The
+default name is @emph{row}, but it can also be changed, a result of
+similar motivations to renaming the result, for semantic accuracy and
+readability.  The row name is set by the schema declaration, with three
+alternative forms, as shown below, from lowest to highest priority:
+
+@enumerate
+@item 
+The @code{schema} instruction itself can take a value, which is used
+as the row name.
+@item
+The @code{schema} branch can contain a child @code{name} instruction.
+@item
+The @code{schema} branch can contain a child @code{row-name} instruction.
+@end enumerate
+
+@example
+page
+   type : table
+   procedure : App_Item_List
+   result : 1
+      schema : item
+   result : 2
+      schema
+         name : item
+   result : 3
+      schema
+         row-name : item
+@end example
+
+@node Adding Elements and Attributes
+@section Adding Elements and Attributes
+
+There are several Schema-specific keywords that map to element and
+attribute names.  For custom elements, an unrecognised tag will be
+added to the result as an element, and instructions that contain both
+tag and value will be output as attributes of the immediate parent
+of the attribute instructions.
+
+@example
+form_submit
+   type : form-submit
+   procedure : App_Edit_Form
+
+
+@end example
+
