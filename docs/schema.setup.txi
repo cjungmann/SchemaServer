@@ -83,22 +83,23 @@ This example illustrates this approach:
 Although we remain in the new directory, the working directory
 is not important when creating a new database:
 @example
-/var/www/MyWebApps$ mysql -e CREATE\ DATABASE\ MyWebApp
+$ cd /var/www/MyWebApp
+$ mysql -e CREATE\ DATABASE\ MyWebApp
 @end example
 
 @item Load the System Procedures
 @example
-/var/www/MyWebApps$ cd /usr/local/lib/SchemaServer/install
-/usr/local/lib/SchemaServer/install$ mysql MyWebApp < sys_procs.sql
+$ cd /usr/local/lib/SchemaServer/install
+$ mysql MyWebApp < sys_procs.sql
 @end example
 
 @item Create MySQL Scripts
-Assuming the recommendd directory structure, go to the @code{setup}
+Assuming the recommended directory structure, go to the @code{setup}
 directory to create the SQL scripts from which the site will be
 constructed.
 @example
-/usr/local/lib/SchemaServer/install$ cd /var/www/MyWebApp/site
-/var/www/MyWebApp/site$ sudo emacs tables.sql
+$ cd /var/www/MyWebApp/site
+$ sudo emacs tables.sql
 @end example
 
 @end table
