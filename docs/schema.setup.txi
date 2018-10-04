@@ -67,6 +67,7 @@ Create the directory in which the site will run.  Since SchemaServer
 works with MySQL tables and procedures, it may be helpful to create
 separate subdirectories for the MySQL scripts and the web site.
 This example illustrates this approach:
+
 @example
 ~/$ cd /var/www
 /var/www$ sudo mkdir MyWebApp
@@ -74,10 +75,12 @@ This example illustrates this approach:
 /var/www/MyWebApp$ sudo mkdir setup site
 @end example
 
-/var/www/
-   /var/www/MyWebApp
-      var/www/MyWebApp/setup
-      var/www/MyWebApp/site
+@item Install Framework
+Continuing from the previous step, enter the @code{site}
+directory to install a framework.  It is recommended that the
+default SchemaFramework be used.
+@inforef{Installation, Install default Schema Framework, schemafw}
+
 
 @item Create a New Database
 Although we remain in the new directory, the working directory
