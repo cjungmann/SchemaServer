@@ -5,8 +5,10 @@ This chapter provides instructions for two setup scenarios, for the
 server environment itself, and for a new site.
 
 @menu
-* Download and Install::
-* Create a New Site::
+* Download and Install::    Get the server files from GitHub
+* Create a New Site::       Directories and files, with MySQL setup
+* Apache Configuration::    Contents and destination for configuration file
+* Make Site Available::     Make entry in hosts file or DNS account
 @end menu
 
 @node Download and Install
@@ -102,3 +104,70 @@ constructed.
 @end table
 
 
+@node Apache Configuration
+@section Apache Configuration
+
+The next step to creating a SchemaServer is to create and
+enable an Apache configuration file.
+
+The following example continues with the assumptions of the
+previous page, where the database and the host directory is
+named @emph{MyWebApp}, that the host directory contains,
+among others, a subdirectory named @emph{site} in which
+the SRM scripts reside.
+
+This example is meant to run on localhost, so the
+@strong{ServerName} value is set to @emph{webapp}.  For a
+site serving the public, @strong{ServerName} should be set
+to something like @emph{www.webapp.com}.
+
+The value of @strong{DirectoryIndex} should be the file
+or script that should be used when the URL omits a specific
+page.
+
+In the usual server configuration, this file should be
+created in @file{/etc/apache2/sites-available/}.  Adjust this
+path if it does not reflect the structure of the target
+server.
+
+@example
+# filename: webapp.conf
+<VirtualHost *:80>
+   ServerName webapp
+   DocumentRoot /var/www/MyWebApp/site
+   DirectoryIndex Person.srm
+</VirtualHost>
+@end example
+
+Having created the configuration file in the appropriate
+directory, enable the site with the following commands:
+
+@example
+$ sudo a2ensite webapp
+$ sudo service apache2 restart
+@end example
+
+@node Make Site Available
+@section Make Site Available
+
+The final step to setup an web site is to make sure that the
+site can be found by the browsers that should have access.
+
+@subheading Localhost setup
+
+To run on a localhost, it is only necessary to add an entry
+to @file{/etc/hosts}:
+
+@example
+# file /etc/hosts
+.
+.
+127.0.0.1 webapp
+@end example
+
+@subheading World-Wide Web
+
+To make the site available to the internet at large, it will be
+necessary to create a @acronym{DNS} (Dynamic Name Server) entry
+at a name registrar.  This process will differ according to the
+registrar.  Please follow the instructions found there.
