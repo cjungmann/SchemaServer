@@ -4326,6 +4326,8 @@ void Schema::procedure_message_reporter(const char *type,
       ifprintf(stderr, "Type %s: %s.\n", type, msg);
 
    print_message_as_xml(g_schema_output, type, msg, where);
+
+   throw schema_exception("procedure_message_reporter terminated headers, nothing can follow.");
 }
 
 /**
