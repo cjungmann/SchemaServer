@@ -9,6 +9,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <sys/time.h> // for logfile name when logging requests
+
 
 // Static variables:
 MYSQL Schema::s_mysql;
@@ -1490,6 +1492,7 @@ void Schema::report_message(const char *msg)
    (*s_notifier)(msg, "message", m_out);
 }
 
+
 /**
  * @brief Writes error message to FILE* m_out using notify function pointer.
  */
@@ -1862,6 +1865,84 @@ bool Schema::confirm_mysql_connection(void)
 }
 
 
+/** Static handle to open logfile */
+int Schema::s_logfile_handle = -1;
+
+/** Test if logfile is open. */
+bool Schema::logfile_open(void) { return s_logfile_handle != -1; }
+
+/**
+ * Create a new logfile in /tmp/schema.
+ *
+ * This function is not smart enough to create the directory if it doesn't
+ * exist.  It could, be I think it would be better to force the developer
+ * to do this by hand to ensure that /tmp/schema is not a name collision.
+ *
+ * It may be better to change the code here than to rename or move an
+ * existing file or directory.  The developer should be forced to take
+ * action.
+ */
+bool Schema::logfile_establish(void)
+{
+   char buff[256];
+
+   struct timeval time_now;
+   struct tm info_now;
+   struct tm* ptm;
+
+   if (0==gettimeofday(&time_now, NULL))
+   {
+      ptm = localtime_r(&time_now.tv_sec, &info_now);
+      sprintf(buff,
+              "/tmp/schema/%u_%4d%02d%02d_%02d:%02d:%02d.%06ld",
+              getpid(),
+              ptm->tm_year+1900,
+              ptm->tm_mon+1,
+              ptm->tm_mday,
+              ptm->tm_hour,
+              ptm->tm_min,
+              ptm->tm_sec,
+              time_now.tv_usec);
+
+      s_logfile_handle = open(buff, O_CREAT|O_WRONLY, 00666);
+
+      return s_logfile_handle != -1;
+   }
+
+   return false;
+}
+
+/**
+ * Like printf, use a format string, followed by parameters to fill
+ * the formatted tokens.  As long as s_logfile_handle is a valid, open
+ * file, all the logfile_printf() invocations will go to that file.
+ */
+void Schema::logfile_printf(const char *format, ...)
+{
+   if (logfile_open())
+   {
+      va_list ap;
+      va_start(ap,format);
+      vdprintf(s_logfile_handle, format, ap);
+      va_end(ap);
+   }
+}
+
+/**
+ * Close the logfile (to flush contents) and set s_logfile_handle to -1
+ * to indicate that there is no open logfile.
+ */
+void Schema::logfile_close(void)
+{
+   if (logfile_open())
+   {
+      logfile_printf("Closing logfile.\n\n");
+      close(s_logfile_handle);
+      s_logfile_handle = -1;
+   }
+}
+
+
 /**
  * @brief Keep processing requests until the sentry says to stop.
  *
@@ -1878,7 +1959,6 @@ bool Schema::confirm_mysql_connection(void)
 int Schema::wait_for_requests(loop_sentry sentry, FILE *out)
 {
    int exitval = 0;
-   
    if (start_mysql())
    {
       while ((*sentry)())

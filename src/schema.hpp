@@ -260,6 +260,30 @@ public:
 
    EFFC_3(Schema);
 
+
+   /** Schema Logging functions and variable(s) **/
+
+   /**
+    * @defgroup Schema logging variable and functions.
+    * @brief Set of functions to log messages to /tmp/schema/ for debugging.
+    *
+    * Use the following four functions as follows,
+    * 1. invoke *logfile_establish()* to create a new logfile.
+    * 2. invoke *logfile_printf()* as often as necessary to fill the logfile.
+    * 3. invoke *logfile_close()* to close the logfile (and clear variable s_logfile_handle).
+    *
+    * You *could* check *logfile_open()* before calling *logfile_printf()* to avoid
+    * creating stack variables if not necessary (though that would be a pretty
+    * obsessive effort at "efficiency."
+    * @{
+    */
+   static int s_logfile_handle;
+   static bool logfile_open(void);
+   static bool logfile_establish(void);
+   static void logfile_printf(const char *format, ...);
+   static void logfile_close(void);
+/** @} */
+
    static void set_header_out(FILE *out) { s_header_out = out; }
 
    static void get_resources_from_environment(FILE *out);
@@ -686,7 +710,9 @@ protected:
     * we'll have to address this differently
     * @{
     */
+public:
    static bool s_headers_done;
+protected:
    static bool s_sfw_xhrequest;
 
    static inline bool assign_sfw_xhrequest_flag(void) { return s_sfw_xhrequest=((getenv("HTTP_SFW_XHREQUEST")) ? true : false); }
