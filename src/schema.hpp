@@ -718,6 +718,13 @@ protected:
     */
 public:
    static bool s_headers_done;
+   static bool s_access_authorized;
+
+   static void reset_request_flags(void)
+   {
+      s_headers_done = false;
+      s_access_authorized = false;
+   }
 protected:
    static bool s_sfw_xhrequest;
 

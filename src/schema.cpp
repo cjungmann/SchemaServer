@@ -1699,6 +1699,7 @@ long int Schema::SFW_Resources::get_mode_position(void) const
 void Schema::get_resources_from_environment(FILE *out)
 {
    SFW_Resources* p_sfwr = nullptr;
+   reset_request_flags();
 
    // Finally, save cookies, if found, then invoke the callback with our work.
    auto f_cookies = [&out, &p_sfwr](const BaseStringer *cookielist)
@@ -1725,7 +1726,7 @@ void Schema::get_resources_from_environment(FILE *out)
       
       // Select and clear from installed response mode:
       schema.set_requested_database();
-      schema.clear_for_new_request();
+      schema.clear_mysql_for_new_request();
 
       // Catch any exception so we have a change for database clean up:
       try
@@ -1737,7 +1738,7 @@ void Schema::get_resources_from_environment(FILE *out)
          print_error_as_xml(out, se.what(), "process_response_mode");
       }
       
-      schema.clear_for_new_request();
+      schema.clear_mysql_for_new_request();
    };
 
    // Fourth, load the response mode:
@@ -1970,8 +1971,6 @@ int Schema::wait_for_requests(loop_sentry sentry, FILE *out)
          // Only for debugging/discovery:
          // print_env_to_tmp();
          
-         s_headers_done = false;
-
          assign_sfw_xhrequest_flag();
 
          try
@@ -2089,7 +2088,7 @@ void Schema::log_new_request(void)
  * second time would be sufficient for security, but the first call to this function
  * is also run for the hypothetical session initialization need.
  */
-void Schema::clear_for_new_request(void)
+void Schema::clear_mysql_for_new_request(void)
 {
    auto cb_result = [](int result_number, DataStack<BindC> &ds)
    {
@@ -3376,6 +3375,7 @@ long Schema::get_request_mode_position(const char *mode_name, bool keep_looking)
 
 
 bool Schema::s_headers_done = false;
+bool Schema::s_access_authorized = false;
 
 // Set starting value in case called on command line:
 bool Schema::s_sfw_xhrequest = assign_sfw_xhrequest_flag();
