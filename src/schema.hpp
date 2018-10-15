@@ -58,6 +58,12 @@ public:
    schema_exception(const char *str) : std::runtime_error(str) { }
 };
 
+class schema_tail_exception : public schema_exception
+{
+public:
+   schema_tail_exception(void) : schema_exception(nullptr) { }
+};
+
 
 /**
  * @brief Sets parameters with query string values.  The typical use would be
