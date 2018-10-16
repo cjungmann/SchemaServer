@@ -61,7 +61,7 @@ public:
 class schema_tail_exception : public schema_exception
 {
 public:
-   schema_tail_exception(void) : schema_exception(nullptr) { }
+   schema_tail_exception(void) : schema_exception("") { }
 };
 
 
@@ -588,7 +588,7 @@ protected:
    static void change_to_path_dir(const char *path);
 
    static void log_new_request(void);
-   static void clear_for_new_request(void);
+   static void clear_mysql_for_new_request(void);
    static bool is_web_request(void)           { return nullptr!=getenv("REQUEST_METHOD"); }
 
    static void start_schema(SFW_Resources &sfwr);
@@ -718,12 +718,10 @@ protected:
     */
 public:
    static bool s_headers_done;
-   static bool s_access_authorized;
 
    static void reset_request_flags(void)
    {
       s_headers_done = false;
-      s_access_authorized = false;
    }
 protected:
    static bool s_sfw_xhrequest;
