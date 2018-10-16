@@ -1733,6 +1733,10 @@ void Schema::get_resources_from_environment(FILE *out)
       {
          schema.process_response_mode();
       }
+      catch(const schema_tail_exception &te)
+      {
+         ; // noop, error message already delivered.
+      }
       catch(const std::exception &se)
       {
          print_error_as_xml(out, se.what(), "process_response_mode");
@@ -2705,12 +2709,12 @@ void Schema::process_response_mode(void)
 {
    if (!m_specsreader)
    {
-      ifputs("No SpecsReader.\n", stderr);
+      print_error_as_xml(m_out, "No SpecsReader", "process_response_mode");
       return;
    }
    else if (!m_mode)
    {
-      ifputs("No response mode selected.\n", stderr);
+      print_error_as_xml(m_out, "No response mode selected", "process_response_mode");
       return;
    }
 
@@ -3064,6 +3068,9 @@ Schema::SESSION_STATUS Schema::get_session_status(SESSION_TYPE stype,
    get_session_cookies(
       [this, &stype, &abandon_session, &rval](uint32_t id, const char *hash)
       {
+         // Deny authorization until match is made
+         rval = SSTAT_EXPIRED;
+
          if (!abandon_session && confirm_session(id,hash))
          {
             m_session_id = id;
@@ -3375,7 +3382,6 @@ long Schema::get_request_mode_position(const char *mode_name, bool keep_looking)
 
 
 bool Schema::s_headers_done = false;
-bool Schema::s_access_authorized = false;
 
 // Set starting value in case called on command line:
 bool Schema::s_sfw_xhrequest = assign_sfw_xhrequest_flag();
@@ -4327,7 +4333,7 @@ void Schema::procedure_message_reporter(const char *type,
 
    print_message_as_xml(g_schema_output, type, msg, where);
 
-   throw schema_exception("procedure_message_reporter terminated headers, nothing can follow.");
+   throw schema_tail_exception();
 }
 
 /**
