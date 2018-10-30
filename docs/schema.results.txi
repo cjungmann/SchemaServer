@@ -1,0 +1,122 @@
+@node Customizing the Result Element
+@section Customizing the Result Element
+
+The XML document created by SchemaServer contains a @emph{resultset},
+an optional data-free @emph{schema} for building a form, and typically,
+one or more @emph{result} elements that contain rows returned by a query.
+
+Procedures may have several result-producing queries that are written to
+the resultset as result elements.  Output results are always labelled
+with an @emph{rndx} attribute that is an enumeration of result elements,
+but other characteristics can be customized, from the name of the result,
+to the name of the data rows (which have the default tag @emph{row}).
+
+The following stored procedure sends information needed for creating
+an invoice.  The procedure contains six queries, of which only five
+will be represented by @emph{result} elements in the XML document.
+The second query in the procedure has no output since it only sets
+variables, so it does not create a @emph{result} element.  You may
+notice that the sixth procedure (labelled @code{rndx = 5}) will also
+have no output thanks to the @code{WHERE 1=0}, but in fact this query
+will also emit a @emph{result} element.
+
+See @inforef{'Customizing Results', 'Customizing Results', 'schemafw'}
+for a discussion about how one might use different result settings.
+
+@example
+CREATE PROCEDURE App_Invoice_Add(person_id INT UNSIGNED)
+BEGIN
+   -- rndx = 1
+   SELECT id, fname, lname
+     FROM Person
+    WHERE id = person_id;
+
+   -- No resultset output, SELECT fields into variables:
+   SELECT id_employer, id_residence INTO @@employer_id, @@residence_id
+     FROM Person
+    WHERE id = person_id;
+
+   -- rndx = 2
+   SELECT name, contact, phone, email
+     FROM Employers
+    WHERE id = @@employer_id
+
+   -- rndx = 3
+   SELECT street, city, zip
+     FROM Residence
+    WHERE id = @@residence_id;
+
+   -- rndx = 4
+   -- all records used for lookup table of allowed categories
+   SELECT id, name, type
+     FROM Category;
+
+   -- rndx = 5
+   -- Empty result to contribute a schema for adding invoice items:
+   SELECT id, name, desc, price
+     FROM Item
+    WHERE 1=0;
+END $$
+@end example
+
+The procedure will be interpreted by the following SRM response mode.
+
+@example
+page
+   type      : form-invoice    # custom mode type
+   procedure : App_Invoice_Add
+   result : 1
+      schema
+   result : 2
+      type : variables
+      name : employer
+   result : 3
+      type : variables
+      name : residence
+   result : 4
+      name : categories
+      schema : category
+   result : 5
+      name : items
+      schema : item
+@end example
+
+Applying the response mode to the procedure output will result
+in a document that looks the following.  Pay attention to how the
+following result elements reflect the intentions stated in the
+comments of the query and the instructions in the response mode.
+
+@example
+<resultset ...>
+   <result rndx="1" row-name="row">
+      <schema ...>
+         <field name="id" ... />
+         <field name="fname" ... />
+         <field name="lname" ... />
+      </schema>
+      <row ...>
+   </result>
+
+   <employee rndx="2" row-name="row" type="variables">
+      <row name="Acme Anvils" contact="Wily Coyote" ... />
+   </employee>
+
+   <residence rndx="3" row-name="row" type="variables">
+      <row street="500 Main Street" city="PetiteVille" zip="12345" />
+   </residence>
+
+   <categories rndx="4" row-name="category">
+      <category id="1" name="oil change" ... />
+      <category id="2" name="tire rotation" ... />
+      <category id="3" name="rebuild engine" .../>
+   </categories>
+
+   <items rndx="5" row-name="item">
+      <schema ...>
+         <field name="id" .../>
+         <field name="name" .../>
+         ...
+      </schema>
+   </items>
+</resultset>
+@end example

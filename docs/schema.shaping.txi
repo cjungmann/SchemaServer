@@ -9,6 +9,7 @@ useful and more readable.
 @menu
 * Customized Element Names::
 * Adding Elements and Attributes::
+* Customizing the Result Element::
 @end menu
 
 @node Customized Element Names
@@ -137,3 +138,4 @@ form_submit
 
 @end example
 
+@include schema.results.txi
