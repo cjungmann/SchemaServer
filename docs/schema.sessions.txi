@@ -8,6 +8,7 @@ and optionally in a application-defined support table.
 
 @menu
 * Session Types::             Explain the basic session types
+* External Session Reference::SchemaServer Web-based User Guide References
 * Simple Session Type::       Unqualified session
 * Identity Session Type::     Session for authorized or subsection
                               interactions
@@ -36,6 +37,19 @@ An identity session is used when it is important to establish
 the user, or at least the user's intentions.  It is most
 commonly used when an application requires that a user login
 
+@node External Session Reference
+@section External Session Reference
+
+This complicated subject has been covered in some depth in the
+@url{https://github.com/cjungmann/schemafw, Schema Framework GitHub page}.
+
+@url{https://github.com/cjungmann/schemafw/blob/master/userguide/SessionOverview.md, Session Overview}
+
+@url{https://github.com/cjungmann/schemafw/blob/master/userguide/PasswordHandling.md, Password Handling}
+
+@url{https://github.com/cjungmann/schemafw/blob/master/userguide/SchemaFWSessionProcs.md, Session Procedures}
+
+@url{https://github.com/cjungmann/schemafw/blob/master/userguide/SchemaFWAuthorizations.md, Session Authorizations}
 
 @node Simple Session Type
 @section Simple Session Type
@@ -56,7 +70,6 @@ Review the upload
 @item
 Commit or abandon the upload.
 @end enumerate
-
 
 @node Identity Session Type
 @section Identity Session Type
