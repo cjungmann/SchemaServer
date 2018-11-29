@@ -935,7 +935,7 @@ protected:
          const refnode *ptr = this;
          while (ptr)
          {
-            if (ptr->ref->is_value(tag));
+            if (ptr->ref->is_value(tag))
                return ptr;
             ++ptr;
          }
