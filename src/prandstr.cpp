@@ -267,7 +267,7 @@ int64_t int_from_stream(IStreamer &s)
                break;
             // otherwise, toggle negative (handle double negative):
             else
-               negative = ~negative;
+               negative = !negative;
          }
          else if (*found_ch)
             v = v*10 + *found_ch - '0';
