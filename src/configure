@@ -47,9 +47,13 @@ define install_documentation
 	cp ../docs/schema.fcgi.7 /usr/share/man/man7
 	gzip -f                  /usr/share/man/man7/schema.fcgi.7
 
-	makeinfo ../docs/schemaserver.txi --paragraph-indent=0 -o  /usr/share/info
-	gzip -f      /usr/share/info/schemaserver.info
-	install-info /usr/share/info/schemaserver.info.gz /usr/share/info/dir
+	ifeq (, $(shell which makeinfo))
+		$(warning "Info files not generated: missing makeinfo command.")
+	else
+		makeinfo ../docs/schemaserver.txi --paragraph-indent=0 -o  /usr/share/info
+		gzip -f      /usr/share/info/schemaserver.info
+		install-info /usr/share/info/schemaserver.info.gz /usr/share/info/dir
+	endif
 endef
 
 all: schema.fcgi
