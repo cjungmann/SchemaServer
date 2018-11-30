@@ -45,6 +45,7 @@ define install_info
 	makeinfo ../docs/schemaserver.txi --paragraph-indent=0 -o  /usr/share/info
 	gzip -f      /usr/share/info/schemaserver.info
 	install-info /usr/share/info/schemaserver.info.gz /usr/share/info/dir
+endef
 
 define install_documentation
 	cp ../docs/schema.fcgi.1 /usr/share/man/man1
