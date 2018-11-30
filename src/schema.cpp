@@ -9,6 +9,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <sys/time.h> // for logfile name when logging requests
+
 
 // Static variables:
 MYSQL Schema::s_mysql;
@@ -1490,6 +1492,7 @@ void Schema::report_message(const char *msg)
    (*s_notifier)(msg, "message", m_out);
 }
 
+
 /**
  * @brief Writes error message to FILE* m_out using notify function pointer.
  */
@@ -1696,6 +1699,7 @@ long int Schema::SFW_Resources::get_mode_position(void) const
 void Schema::get_resources_from_environment(FILE *out)
 {
    SFW_Resources* p_sfwr = nullptr;
+   reset_request_flags();
 
    // Finally, save cookies, if found, then invoke the callback with our work.
    auto f_cookies = [&out, &p_sfwr](const BaseStringer *cookielist)
@@ -1722,19 +1726,23 @@ void Schema::get_resources_from_environment(FILE *out)
       
       // Select and clear from installed response mode:
       schema.set_requested_database();
-      schema.clear_for_new_request();
+      schema.clear_mysql_for_new_request();
 
       // Catch any exception so we have a change for database clean up:
       try
       {
          schema.process_response_mode();
       }
+      catch(const schema_tail_exception &te)
+      {
+         ; // noop, error message already delivered.
+      }
       catch(const std::exception &se)
       {
          print_error_as_xml(out, se.what(), "process_response_mode");
       }
       
-      schema.clear_for_new_request();
+      schema.clear_mysql_for_new_request();
    };
 
    // Fourth, load the response mode:
@@ -1862,6 +1870,84 @@ bool Schema::confirm_mysql_connection(void)
 }
 
 
+/** Static handle to open logfile */
+int Schema::s_logfile_handle = -1;
+
+/** Test if logfile is open. */
+bool Schema::logfile_open(void) { return s_logfile_handle != -1; }
+
+/**
+ * Create a new logfile in /tmp/schema.
+ *
+ * This function is not smart enough to create the directory if it doesn't
+ * exist.  It could, be I think it would be better to force the developer
+ * to do this by hand to ensure that /tmp/schema is not a name collision.
+ *
+ * It may be better to change the code here than to rename or move an
+ * existing file or directory.  The developer should be forced to take
+ * action.
+ */
+bool Schema::logfile_establish(void)
+{
+   char buff[256];
+
+   struct timeval time_now;
+   struct tm info_now;
+   struct tm* ptm;
+
+   if (0==gettimeofday(&time_now, NULL))
+   {
+      ptm = localtime_r(&time_now.tv_sec, &info_now);
+      sprintf(buff,
+              "/tmp/schema/%u_%4d%02d%02d_%02d:%02d:%02d.%06ld",
+              getpid(),
+              ptm->tm_year+1900,
+              ptm->tm_mon+1,
+              ptm->tm_mday,
+              ptm->tm_hour,
+              ptm->tm_min,
+              ptm->tm_sec,
+              time_now.tv_usec);
+
+      s_logfile_handle = open(buff, O_CREAT|O_WRONLY, 00666);
+
+      return s_logfile_handle != -1;
+   }
+
+   return false;
+}
+
+/**
+ * Like printf, use a format string, followed by parameters to fill
+ * the formatted tokens.  As long as s_logfile_handle is a valid, open
+ * file, all the logfile_printf() invocations will go to that file.
+ */
+void Schema::logfile_printf(const char *format, ...)
+{
+   if (logfile_open())
+   {
+      va_list ap;
+      va_start(ap,format);
+      vdprintf(s_logfile_handle, format, ap);
+      va_end(ap);
+   }
+}
+
+/**
+ * Close the logfile (to flush contents) and set s_logfile_handle to -1
+ * to indicate that there is no open logfile.
+ */
+void Schema::logfile_close(void)
+{
+   if (logfile_open())
+   {
+      logfile_printf("Closing logfile.\n\n");
+      close(s_logfile_handle);
+      s_logfile_handle = -1;
+   }
+}
+
+
 /**
  * @brief Keep processing requests until the sentry says to stop.
  *
@@ -1878,7 +1964,6 @@ bool Schema::confirm_mysql_connection(void)
 int Schema::wait_for_requests(loop_sentry sentry, FILE *out)
 {
    int exitval = 0;
-   
    if (start_mysql())
    {
       while ((*sentry)())
@@ -1890,8 +1975,6 @@ int Schema::wait_for_requests(loop_sentry sentry, FILE *out)
          // Only for debugging/discovery:
          // print_env_to_tmp();
          
-         s_headers_done = false;
-
          assign_sfw_xhrequest_flag();
 
          try
@@ -2009,7 +2092,7 @@ void Schema::log_new_request(void)
  * second time would be sufficient for security, but the first call to this function
  * is also run for the hypothetical session initialization need.
  */
-void Schema::clear_for_new_request(void)
+void Schema::clear_mysql_for_new_request(void)
 {
    auto cb_result = [](int result_number, DataStack<BindC> &ds)
    {
@@ -2626,12 +2709,12 @@ void Schema::process_response_mode(void)
 {
    if (!m_specsreader)
    {
-      ifputs("No SpecsReader.\n", stderr);
+      print_error_as_xml(m_out, "No SpecsReader", "process_response_mode");
       return;
    }
    else if (!m_mode)
    {
-      ifputs("No response mode selected.\n", stderr);
+      print_error_as_xml(m_out, "No response mode selected", "process_response_mode");
       return;
    }
 
@@ -2986,6 +3069,9 @@ Schema::SESSION_STATUS Schema::get_session_status(SESSION_TYPE stype,
    get_session_cookies(
       [this, &stype, &abandon_session, &rval](uint32_t id, const char *hash)
       {
+         // Deny authorization until match is made
+         rval = SSTAT_EXPIRED;
+
          if (!abandon_session && confirm_session(id,hash))
          {
             m_session_id = id;
@@ -4287,6 +4373,8 @@ void Schema::procedure_message_reporter(const char *type,
       ifprintf(stderr, "Type %s: %s.\n", type, msg);
 
    print_message_as_xml(g_schema_output, type, msg, where);
+
+   throw schema_tail_exception();
 }
 
 /**

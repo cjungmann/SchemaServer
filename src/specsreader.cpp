@@ -709,7 +709,7 @@ void SpecsReader::replace_all_shared_refs(ab_handle *head, ab_handle *branch, bo
    ab_handle *child = branch->first_child();
    if (child)
    {
-      if (child->is_shared_ref())
+      if (child->is_shared_ref() || child->is_autoload_tag())
          replace_shared_ref(head, child);
       replace_all_shared_refs(head, child);
    }

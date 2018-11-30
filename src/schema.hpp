@@ -58,6 +58,12 @@ public:
    schema_exception(const char *str) : std::runtime_error(str) { }
 };
 
+class schema_tail_exception : public schema_exception
+{
+public:
+   schema_tail_exception(void) : schema_exception("") { }
+};
+
 
 /**
  * @brief Sets parameters with query string values.  The typical use would be
@@ -259,6 +265,30 @@ public:
    Schema(SFW_Resources &sfwr, FILE *out);
 
    EFFC_3(Schema);
+
+
+   /** Schema Logging functions and variable(s) **/
+
+   /**
+    * @defgroup Schema logging variable and functions.
+    * @brief Set of functions to log messages to /tmp/schema/ for debugging.
+    *
+    * Use the following four functions as follows,
+    * 1. invoke *logfile_establish()* to create a new logfile.
+    * 2. invoke *logfile_printf()* as often as necessary to fill the logfile.
+    * 3. invoke *logfile_close()* to close the logfile (and clear variable s_logfile_handle).
+    *
+    * You *could* check *logfile_open()* before calling *logfile_printf()* to avoid
+    * creating stack variables if not necessary (though that would be a pretty
+    * obsessive effort at "efficiency."
+    * @{
+    */
+   static int s_logfile_handle;
+   static bool logfile_open(void);
+   static bool logfile_establish(void);
+   static void logfile_printf(const char *format, ...);
+   static void logfile_close(void);
+/** @} */
 
    static void set_header_out(FILE *out) { s_header_out = out; }
 
@@ -558,7 +588,7 @@ protected:
    static void change_to_path_dir(const char *path);
 
    static void log_new_request(void);
-   static void clear_for_new_request(void);
+   static void clear_mysql_for_new_request(void);
    static bool is_web_request(void)           { return nullptr!=getenv("REQUEST_METHOD"); }
 
    static void start_schema(SFW_Resources &sfwr);
@@ -686,7 +716,14 @@ protected:
     * we'll have to address this differently
     * @{
     */
+public:
    static bool s_headers_done;
+
+   static void reset_request_flags(void)
+   {
+      s_headers_done = false;
+   }
+protected:
    static bool s_sfw_xhrequest;
 
    static inline bool assign_sfw_xhrequest_flag(void) { return s_sfw_xhrequest=((getenv("HTTP_SFW_XHREQUEST")) ? true : false); }
@@ -898,7 +935,7 @@ protected:
          const refnode *ptr = this;
          while (ptr)
          {
-            if (ptr->ref->is_value(tag));
+            if (ptr->ref->is_value(tag))
                return ptr;
             ++ptr;
          }
