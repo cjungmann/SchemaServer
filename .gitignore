@@ -4,7 +4,6 @@ schema.fcgi
 
 html/
 
-test/generated/
-test/setup/SchemaServer_Test.conf
-test/site/default.xsl
-test/site/includes
+test/
+utilities/
+*.srm
