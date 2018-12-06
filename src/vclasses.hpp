@@ -274,7 +274,9 @@ typedef Number_Real<int64_t, int64_t, cprint_int, int_from_stream, CT_INT_LONGLO
 typedef Number_Real<float, double, cprint_double, double_from_stream, CT_FLOAT_FLOAT>    ri_float;
 typedef Number_Real<double, double, cprint_double, double_from_stream, CT_FLOAT_DOUBLE>  ri_double;
 
-typedef Number_Real<mydate, mydate, cprint_mydate, mydate_from_stream, CT_TIME_DATETIME>   ri_date;
+typedef Number_Real<mydate, mydate, cprint_mydate, mydate_from_stream, CT_TIME_DATE>   ri_date;
+typedef Number_Real<mydate, mydate, cprint_mytime, mydate_from_stream, CT_TIME_TIME>   ri_time;
+typedef Number_Real<mydate, mydate, cprint_mydatetime, mydate_from_stream, CT_TIME_DATETIME>   ri_datetime;
 
 
 template <class T>
@@ -326,7 +328,9 @@ typedef Number_Virtual<int64_t, int64_t, cprint_int, int_from_stream, CT_INT_LON
 typedef Number_Virtual<float, double, cprint_double, double_from_stream, CT_FLOAT_FLOAT>      ai_float;
 typedef Number_Virtual<double, double, cprint_double, double_from_stream, CT_FLOAT_DOUBLE>    ai_double;
 
-typedef Number_Virtual<mydate, mydate, cprint_mydate, mydate_from_stream, CT_TIME_DATETIME>   ai_date;
+typedef Number_Virtual<mydate, mydate, cprint_mytime, mydate_from_stream, CT_TIME_TIME>   ai_date;
+typedef Number_Virtual<mydate, mydate, cprint_mydate, mydate_from_stream, CT_TIME_DATE>   ai_time;
+typedef Number_Virtual<mydate, mydate, cprint_mydatetime, mydate_from_stream, CT_TIME_DATETIME>   ai_datetime;
 
 
 
