@@ -10,6 +10,7 @@ useful and more readable.
 * Customized Element Names::
 * Adding Elements and Attributes::
 * Customizing the Result Element::
+* Including Query-String Values as Variables::
 @end menu
 
 @node Customized Element Names
@@ -139,3 +140,51 @@ form_submit
 @end example
 
 @include schema.results.txi
+
+
+@node Including Query-String Values as Variables
+@section Including Query-String Values as Variables
+
+In addition to whatever result elements are created by
+the queries in the procedure that a response mode calls,
+a special query-string-based result can be summoned with
+a simple instruction in a response mode.
+
+When a response mode includes the instruction
+@code{qstring : reflect}, a new result element, named
+@emph{qstring}, is created, with the @emph{rndx} attribute
+set to one value higher than the last query-based result.
+The @emph{rndx} attribute is necessary as the attribute
+is used to confirm that named result elements are in fact
+result elements.  The qstring element will have one row
+with attributes that match the names and values of the
+arguments in the query string.
+
+The process can be more easily understood with an example.
+Applying the URL @code{https://site.com?Person.srm&edit&household_id=1&household_name=Smith},
+to this response mode,
+
+@example
+edit
+   type        : form-new
+   schema-proc : App_Person_Update
+   qstring     : reflect
+@end example
+
+will generate a document like this, with the final resultset
+element, @emph{qstring} containing the query string values.
+
+@example
+<resultset ...>
+   <schema ...>
+      <field name="fname" .../>
+      <field name="lname" .../>
+   </schema>
+   <qstring rndx="1" row-name="row" type="variables">
+      <row household_id="1" household_name="Smith" />
+   </qstring>
+</resultset>
+@end example
+
+
+   
