@@ -887,15 +887,12 @@ void SpecsReader::t_build_branch(long position, abh_callback &callback, Advisor 
 
                auto *amode = get_shared_advisor_mode(ptr);
 
-               if (!amode)
-               {
-                  if (ptr->is_autoload_tag())
-                     continue;
-                  else
-                     throw_missing("shared reference", ptr->value());
-               }
+               if (!amode && !ptr->is_autoload_tag())
+                  throw_missing("shared reference", ptr->value());
 
-               if (f_prep_advisor(amode))
+               // f_prep_advisor() does not check for nullptr, so
+               // confirm nullptr is not null before calling it.
+               if (amode && f_prep_advisor(amode))
                {
                   void *buff = alloca(len_shared_handle(*p_adv));
                   ab_handle *shead = make_shared_handle(buff, *p_adv, nullptr);
