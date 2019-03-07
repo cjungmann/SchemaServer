@@ -101,8 +101,8 @@
  * @brief SchemaFW-generated string variable \@dropped_salt for salting passwords.
  *
  * MySQL doesn't have a method for generating a reliable random number, so the
- * reponsibility for this falls to SchemaFW, which already makes a similar string
- * for a session hash.
+ * reponsibility for this falls to SchemaServer, which already makes a similar
+ * string for a session hash.
  *
  * This variable is set when a SRM response mode includes a _drop-salt_
  * instruction.  The default name and length are "dropped-salt" and 32, which
