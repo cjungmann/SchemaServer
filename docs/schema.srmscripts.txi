@@ -5,6 +5,15 @@
 hierarchical text that inform @command{schema.fcgi} how to process
 HTTP requests.
 
+@menu
+* SRM Scripts Introduction ::
+* SRM Scripts Examples ::
+* SRM Scripts Multi-line Values ::
+@end menu
+
+@node SRM Scripts Introduction
+@section SRM Scripts Introduction
+
 Each active line is either a handle or an property.
 
 A @dfn{handle} is an element with contents that may be either
@@ -34,6 +43,8 @@ by the indentation level.  Differing indentation levels under related elements i
 For example, even though the properties of Caroline and Alonzo have the same number of indentation
 spaces, they will not be grouped together because of the intervening higher-level elements.
 
+@node SRM Scripts Examples
+@section SRM Scripts Examples
 @example
 household
    member
@@ -77,3 +88,26 @@ list
 
 SRM files contain @emph{modes}, each of which consist of 
 
+@node SRM Scripts Multi-line Values
+@section SRM Scripts Multi-line Values
+
+Some times text won't fit on a single line, and besides, extra long lines
+are hard to read.  It is possible to create continuation lines to allow
+long text strings to be broken over multiple script lines.
+
+Simple terminate a line with a back-slash @emph{\} and make sure
+the following line does not begin at column 0.  Ideally, for easier
+reading, indent the continuation lines to align with the previous lines.
+
+Notice the @emph{info} instruction of the following example.  The first
+line concludes with backslash, and the second line begins at the same
+column as the value of the first line began.
+
+@example
+list
+   type      : table
+   procedure : App_Person_List
+   title     : List of Persons
+   info      : This list of Person items allows you to manipulate \
+               a population of Persons for your own creepy way.
+@end example
