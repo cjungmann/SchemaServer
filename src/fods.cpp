@@ -74,6 +74,7 @@ void Result_As_FODS::t_fork_to_zip(IGeneric_Void_Callback &cb)
          close(errpipe[1]);
          filter_stderr(errpipe[0]);
          waitpid(piderr, &status, 0); 
+         _exit(0);
       }
    }
    else
