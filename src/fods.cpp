@@ -60,22 +60,7 @@ void Result_As_FODS::t_fork_to_zip(IGeneric_Void_Callback &cb)
       int errpipe[2];
       pipe(errpipe);
       
-      pid_t piderr = fork();
-      if (piderr==0)
-      {
-         close(errpipe[0]);
-         close(ifileno(stderr));
-         dup2(ifileno(stderr), errpipe[1]);
-         
-         execl("zipit", "zipit", s_target, static_cast<char*>(nullptr));
-      }
-      else
-      {
-         close(errpipe[1]);
-         filter_stderr(errpipe[0]);
-         waitpid(piderr, &status, 0); 
-         _exit(0);
-      }
+      execl("zipit", "zipit", s_target, static_cast<char*>(nullptr));
    }
    else
    {
