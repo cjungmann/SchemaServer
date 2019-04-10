@@ -3051,6 +3051,8 @@ void Schema::process_generate(void)
          Generic_User<StoredProc, decltype(fsp)> spu(fsp);
 
          StoredProc::build(&s_mysql, procname, spu);
+
+         ifputs("Response mode type 'generate' running without a 'command' instruction.\n", stderr);
       }
    }
    else
