@@ -370,6 +370,7 @@ protected:
    static const char     *s_default_import_confirm_proc;
    const static char     *s_ok_status;
    const static char     *s_jump_status;
+   const static char     *s_command_directory;
 
    static char           s_failure_message[200];
    static char           s_failure_detail[80];
@@ -427,7 +428,8 @@ public:
       MACTION_FORM_NEW,
       MACTION_FORM_IMPORT,
       MACTION_FORM_VIEW,
-      MACTION_IMPORT_REVIEW
+      MACTION_IMPORT_REVIEW,
+      MACTION_GENERATE
    };
 
    struct struct_mode_action
@@ -670,6 +672,7 @@ protected:
    void process_response_mode(void);
 
    void process_export(void);
+   void process_generate(void);
    void process_import(void);
    void process_prep_procedure(const char *procname);
    void process_response(SESSION_TYPE stype, SESSION_STATUS sstatus);
@@ -735,6 +738,10 @@ protected:
    bool refresh_to_not_authorized_destination(int seconds=0);
    bool refresh_to_no_session_destination(int seconds=0);
 
+   inline static void print_ContentType(const char* type)
+   {
+      ifprintf(s_header_out, "Content-Type: %s\n", type);
+   }
    /** @brief Write content type to headers. */
    inline static void print_XML_ContentType() { ifputs("Content-Type: text/xml\n", s_header_out); }
    /** @brief Write FODS content type to headers. */

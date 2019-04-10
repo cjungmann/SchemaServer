@@ -5,9 +5,13 @@
 #include "xmlutils.hpp"
 #include "advisor.hpp"
 #include "schema.hpp"
+#include "generate.hpp"
 
 #include <fcntl.h>
 #include <unistd.h>
+
+#include <sys/types.h>     // For waitpid()
+#include <sys/wait.h>      // provide waitpid() for t_set_pipes()
 
 #include <sys/time.h> // for logfile name when logging requests
 
@@ -22,6 +26,8 @@ const char* Schema::s_default_import_confirm_proc = "ssys_default_import_confirm
 
 const char* Schema::s_ok_status = "Status: 200 OK\n";
 const char* Schema::s_jump_status = "Status: 303 See Other\n";
+
+const char* Schema::s_command_directory = "../commands/";
 
 /**
  * @brief Static value for FILE stream to which header information is sent.
@@ -135,7 +141,8 @@ const Schema::struct_mode_action Schema::map_mode_actions[] =
    { "form-new",        Schema::MACTION_FORM_NEW        },
    { "form-import",     Schema::MACTION_FORM_IMPORT     },
    { "form-view",       Schema::MACTION_FORM_VIEW       },
-   { "import-review",   Schema::MACTION_IMPORT_REVIEW   }
+   { "import-review",   Schema::MACTION_IMPORT_REVIEW   },
+   { "generate",        Schema::MACTION_GENERATE        }
 };
 const Schema::struct_mode_action *Schema::end_map_mode_actions =
    map_mode_actions + (sizeof(map_mode_actions) / sizeof(struct_mode_action));
@@ -2799,7 +2806,7 @@ void Schema::process_response_mode(void)
       }
    }
 
-   if (m_mode_action==MACTION_EXPORT)
+   if (m_mode_action==MACTION_EXPORT || m_mode_action==MACTION_GENERATE)
    {
       const char *filename = m_mode->seek_value("filename");
       if (!filename)
@@ -2810,7 +2817,14 @@ void Schema::process_response_mode(void)
          ifputs(filename, s_header_out);
          ifputs("\"\n", s_header_out);
       }
-      print_FODS_ContentType();
+      if (m_mode_action==MACTION_EXPORT)
+         print_FODS_ContentType();
+      else
+      {
+         const char *content_type = m_mode->seek_value("content_type");
+         if (content_type)
+            print_ContentType(content_type);
+      }
    }
    else
       print_XML_ContentType();
@@ -2820,6 +2834,10 @@ void Schema::process_response_mode(void)
    if (m_mode_action==MACTION_EXPORT)
    {
       process_export();
+   }
+   else if (m_mode_action==MACTION_GENERATE)
+   {
+      process_generate();
    }
    else
    {
@@ -2878,7 +2896,7 @@ void Schema::process_response_mode(void)
 /**
  * @brief Returns an ODS file from a query.
  *
- * This is the one path that will not return an XML file, but rather an ODS file.
+ * This path that will not return an XML file, but rather an ODS file.
  *
  * Several steps here are different from the standard path, due to using Result_As_FODS
  * as the Result_User.
@@ -2912,6 +2930,117 @@ void Schema::process_export(void)
    else
       print_message_as_xml(m_out, "error", "Missing procedure instruction");
    
+}
+
+/**
+ * @brief Streams the XML output to an external command for the output
+ *
+ * This is another path that will not return an XML file.  Instead, passes the
+ * XML output to an external script that will process the data.
+ *
+ * Several steps here are different from the standard path, due to using Result_As_FODS
+ * as the Result_User.
+ */
+void Schema::process_generate(void)
+{
+   // Prepare IParam_Setter m_setter, leaving m_puller=nullptr
+   StrmStreamer ss(stdin);
+   Streamer_Setter setter(ss);
+   m_setter = &setter;
+
+   const char *procname = m_mode->seek_value("procedure");
+   const char *command = m_mode->seek_value("command");
+
+   if (procname && command)
+   {
+      auto fsp = [this, &command](StoredProc &sp)
+      {
+         int fd_in[2];
+         int fd_out[2];
+
+         auto closer = [](int *fda) { close(fda[0]); close(fda[1]); };
+
+         // Upon any failure to get pipes, close any open ends
+         // and leave indicator of failure by setting fd_in[0] = -1
+         if (pipe(fd_in))
+            fd_in[0] = -1;
+         else if (pipe(fd_out))
+         {
+            (*closer)(fd_in);
+            fd_in[0] = -1;
+         }
+
+         if (fd_in[0]>=0)
+         {
+            pid_t pid_in = fork();
+
+            if (pid_in == -1)
+            {
+               (*closer)(fd_in);
+               (*closer)(fd_out);
+            }
+            else if (pid_in == 0)      // Child #1
+            {
+               if (chdir(s_command_directory)==-1)
+                  ifprintf(stderr, "In process_generate, chdir failed with errno = %d\n", errno);
+
+               if (access(command, X_OK)==-1)
+                  ifprintf(stderr,
+                           "Failed in attempt to confirm availability of '%s' (%d)\n",
+                           command,
+                           errno);
+
+               // Isn't the read end of a pipe blocking?  
+               if (dup2(fd_in[0], STDIN_FILENO) == -1)
+                  ifprintf(stderr, "Failed to pipe stdin (%d)\n", errno);
+
+               (*closer)(fd_in);
+
+               if (dup2(fileno(m_out), STDOUT_FILENO) == -1)
+                  ifprintf(stderr, "Failed to pipe stdout (%d)\n", errno);
+               (*closer)(fd_out);
+
+               execl(command, command, nullptr);
+               ifprintf(stderr, "execl failed, returning an errno = %d (%s), about to _exit(EXIT_FAILURE)\n", errno, strerror(errno));
+               _exit(EXIT_FAILURE);
+            }
+
+            // Parent:
+            int status;
+            FILE *f_out = fdopen(fd_in[1], "w");
+            close(fd_in[0]);
+            (*closer)(fd_out);
+
+            const char *wrap = m_mode->seek_value("wrap"); 
+            if (wrap)
+               ifprintf(f_out, "<%s>\n", wrap);
+
+            SimpleProcedure proc(sp.querystr(), sp.bindstack());
+            // Result_As_XML resout(f_out);
+            Result_As_SchemaDoc resout(*m_specsreader, m_mode, m_mode_action, f_out);
+
+            proc.run(&s_mysql, this, &resout);
+
+            if (wrap)
+               ifprintf(f_out, "</%s>\n", wrap);
+
+            // Close stream to signal completion to child.
+            ifclose(f_out);
+
+            waitpid(pid_in, &status, 0);
+         }            
+      };
+      Generic_User<StoredProc, decltype(fsp)> spu(fsp);
+
+      StoredProc::build(&s_mysql, procname, spu);
+   }
+   else
+   {
+      if (!procname)
+         print_message_as_xml(m_out, "error", "Missing procedure instruction");
+      if (!command)
+         print_message_as_xml(m_out, "error", "Missing command instruction");
+   }
 }
 
 /**
