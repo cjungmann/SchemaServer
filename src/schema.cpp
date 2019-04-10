@@ -5,7 +5,6 @@
 #include "xmlutils.hpp"
 #include "advisor.hpp"
 #include "schema.hpp"
-#include "generate.hpp"
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -2949,98 +2948,113 @@ void Schema::process_generate(void)
    m_setter = &setter;
 
    const char *procname = m_mode->seek_value("procedure");
-   const char *command = m_mode->seek_value("command");
 
-   if (procname && command)
+   if (procname)
    {
-      auto fsp = [this, &command](StoredProc &sp)
+      const char *wrap = m_mode->seek_value("wrap"); 
+      const char *command = m_mode->seek_value("command");
+      if (command)
       {
-         int fd_in[2];
-         int fd_out[2];
-
-         auto closer = [](int *fda) { close(fda[0]); close(fda[1]); };
-
-         // Upon any failure to get pipes, close any open ends
-         // and leave indicator of failure by setting fd_in[0] = -1
-         if (pipe(fd_in))
-            fd_in[0] = -1;
-         else if (pipe(fd_out))
-         {
-            (*closer)(fd_in);
-            fd_in[0] = -1;
-         }
-
-         if (fd_in[0]>=0)
-         {
-            pid_t pid_in = fork();
-
-            if (pid_in == -1)
+         auto fsp = [this, &command, &wrap](StoredProc &sp)
             {
-               (*closer)(fd_in);
-               (*closer)(fd_out);
-            }
-            else if (pid_in == 0)      // Child #1
-            {
-               if (chdir(s_command_directory)==-1)
-                  ifprintf(stderr, "In process_generate, chdir failed with errno = %d\n", errno);
+               int fd_in[2];
+               int fd_out[2];
 
-               if (access(command, X_OK)==-1)
-                  ifprintf(stderr,
-                           "Failed in attempt to confirm availability of '%s' (%d)\n",
-                           command,
-                           errno);
+               auto closer = [](int *fda) { close(fda[0]); close(fda[1]); };
 
-               // Isn't the read end of a pipe blocking?  
-               if (dup2(fd_in[0], STDIN_FILENO) == -1)
-                  ifprintf(stderr, "Failed to pipe stdin (%d)\n", errno);
+               // Upon any failure to get pipes, close any open ends
+               // and leave indicator of failure by setting fd_in[0] = -1
+               if (pipe(fd_in))
+                  fd_in[0] = -1;
+               else if (pipe(fd_out))
+               {
+                  (*closer)(fd_in);
+                  fd_in[0] = -1;
+               }
 
-               (*closer)(fd_in);
+               if (fd_in[0]>=0)
+               {
+                  pid_t pid_in = fork();
 
-               if (dup2(fileno(m_out), STDOUT_FILENO) == -1)
-                  ifprintf(stderr, "Failed to pipe stdout (%d)\n", errno);
-               (*closer)(fd_out);
+                  if (pid_in == -1)
+                  {
+                     (*closer)(fd_in);
+                     (*closer)(fd_out);
+                  }
+                  else if (pid_in == 0)      // Child #1
+                  {
+                     if (chdir(s_command_directory)==-1)
+                        ifprintf(stderr, "In process_generate, chdir failed with errno = %d\n", errno);
 
-               execl(command, command, nullptr);
-               ifprintf(stderr, "execl failed, returning an errno = %d (%s), about to _exit(EXIT_FAILURE)\n", errno, strerror(errno));
-               _exit(EXIT_FAILURE);
-            }
+                     if (access(command, X_OK)==-1)
+                        ifprintf(stderr,
+                                 "Failed in attempt to confirm availability of '%s' (%d)\n",
+                                 command,
+                                 errno);
 
-            // Parent:
-            int status;
-            FILE *f_out = fdopen(fd_in[1], "w");
-            close(fd_in[0]);
-            (*closer)(fd_out);
+                     // Isn't the read end of a pipe blocking?  
+                     if (dup2(fd_in[0], STDIN_FILENO) == -1)
+                        ifprintf(stderr, "Failed to pipe stdin (%d)\n", errno);
 
-            const char *wrap = m_mode->seek_value("wrap"); 
+                     (*closer)(fd_in);
+
+                     if (dup2(fileno(m_out), STDOUT_FILENO) == -1)
+                        ifprintf(stderr, "Failed to pipe stdout (%d)\n", errno);
+                     (*closer)(fd_out);
+
+                     execl(command, command, nullptr);
+                     ifprintf(stderr, "execl failed, returning an errno = %d (%s), about to _exit(EXIT_FAILURE)\n", errno, strerror(errno));
+                     _exit(EXIT_FAILURE);
+                  }
+
+                  // Parent:
+                  int status;
+                  FILE *f_out = fdopen(fd_in[1], "w");
+                  close(fd_in[0]);
+                  (*closer)(fd_out);
+
+                  if (wrap)
+                     ifprintf(f_out, "<%s>\n", wrap);
+
+                  SimpleProcedure proc(sp.querystr(), sp.bindstack());
+                  Result_As_SchemaDoc resout(*m_specsreader, m_mode, m_mode_action, f_out);
+
+                  proc.run(&s_mysql, this, &resout);
+
+                  if (wrap)
+                     ifprintf(f_out, "</%s>\n", wrap);
+
+                  // Close stream to signal completion to child.
+                  ifclose(f_out);
+
+                  waitpid(pid_in, &status, 0);
+               }            
+            };
+         Generic_User<StoredProc, decltype(fsp)> spu(fsp);
+
+         StoredProc::build(&s_mysql, procname, spu);
+      }
+      else // No command instruction
+      {
+         auto fsp = [this, &wrap](StoredProc &sp)
+         {
             if (wrap)
-               ifprintf(f_out, "<%s>\n", wrap);
+               ifprintf(m_out, "<%s>\n", wrap);
 
             SimpleProcedure proc(sp.querystr(), sp.bindstack());
-            // Result_As_XML resout(f_out);
-            Result_As_SchemaDoc resout(*m_specsreader, m_mode, m_mode_action, f_out);
-
+            Result_As_SchemaDoc resout(*m_specsreader, m_mode, m_mode_action, m_out);
             proc.run(&s_mysql, this, &resout);
 
             if (wrap)
-               ifprintf(f_out, "</%s>\n", wrap);
+               ifprintf(m_out, "</%s>\n", wrap);
+         };
+         Generic_User<StoredProc, decltype(fsp)> spu(fsp);
 
-            // Close stream to signal completion to child.
-            ifclose(f_out);
-
-            waitpid(pid_in, &status, 0);
-         }            
-      };
-      Generic_User<StoredProc, decltype(fsp)> spu(fsp);
-
-      StoredProc::build(&s_mysql, procname, spu);
+         StoredProc::build(&s_mysql, procname, spu);
+      }
    }
    else
-   {
-      if (!procname)
-         print_message_as_xml(m_out, "error", "Missing procedure instruction");
-      if (!command)
-         print_message_as_xml(m_out, "error", "Missing command instruction");
-   }
+      print_message_as_xml(m_out, "error", "Missing procedure instruction");
 }
 
 /**
