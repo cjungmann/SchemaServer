@@ -9,6 +9,7 @@ software stack that receives the data.
 
 @menu
 * List of Mode Types::
+* Generate Mode Type::   Use External Command to Generate a Document
 @end menu
 
 
@@ -69,3 +70,5 @@ This mode type causes @command{schema.fcgi} to return the results
 of the @code{procedure} instruction as a spreadsheet.
 @end table
 
+
+@include schema.generate.txi
