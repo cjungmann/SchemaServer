@@ -1,0 +1,128 @@
+@node Generate Mode Type
+@section Generate Mode Type
+
+This mode type is used to generate and return a document by transforming the
+XML output to an external command.  Through this mode type, it is possible to
+return PDF or other documents from information from the database.
+
+@menu
+* Generate Introduction ::
+* Generate Instructions ::
+* Generate Commands ::
+* Generate Examples ::
+@end menu
+
+@node Generate Introduction
+@subsection Generate Introduction
+
+The generate mode type uses the named procedure to create an XML document,
+which is piped through an external command to filter or transform the
+content.
+
+@node Generate Instructions
+@subsection Generate Instructions
+
+Some generate mode instructions will be familiar, with @emph{type} and
+@emph{procedure} working as always.  Other specialized instructions dictate
+how Schema Server should construct the response.
+
+All of the following instructions are, technically, optional.  However,
+the @emph{command}, @emph{content-type}, and @emph{file-name} instructions
+are strongly recommended.  The @emph{wrap} instruction is only necessary
+if there are multiple results in the procedure output.
+
+@table @strong
+@item command
+
+The @emph{command} instruction indicates the external program that will be
+used to transform the output.  The external program, or a link to the program,
+must reside in a @emph{commands} directory that is a sibling of the directory
+from which the site is running.  @xref{Generate Commands}
+
+NOTE: The command instruction can be omitted to get raw XML that can be used
+for development and debugging.  If this instruction is omitted, despite an
+error message that will be written to @emph{stderr}, the untransformed XML
+output can be saved to a file or piped to a command program in development
+or to @code{xsltproc} or other XML processor.
+
+@item content-type
+
+This is the mime type of the transformed generated content.  This value will
+be put into the response header to signal to the client how to interpret the
+response document.
+
+@item file-name
+
+While not always required, it is helpful to include a default file name for
+the users to see when they may choose to save the document.
+
+@item wrap
+
+Creates a container element as a document element to contain the result
+element or elements.
+
+In many cases, only a single result will be emitted from the procedure, and
+the XML document will use the result element as the document element.
+
+When a procedure executes multiple queries whose output consists of multiple
+result elements, the elements must be wrapped in a container element to satisfy
+XML's requirement that a document have only one document element. @xref{Generate Examples}
+
+@end table
+
+@node Generate Commands
+@subsection Generate Commands
+
+The external command must reside in a directory named @emph{commands} that is
+parallel to the directory in which the site is running.
+
+@example
+...members
+......setup_files
+......site
+......commands
+@end example
+
+Although files in the @emph{commands} most be executable if they are to be used
+as commands, the files can be regular or linked files.
+
+The command will be run in the @emph{commands} directory to make it easier to
+reference auxiliary files like XSL stylesheets, etc.
+
+The command files must read data from @emph{stdin} and return the finished
+transformation through @emph{stdout}.  It should be able to run alone, especially
+for testing.  If the command won't run on its own, it will not run from the
+Schema Server, either.
+
+@node Generate Examples
+@subsection Generate Examples
+
+This first example is a generate mode with the minimum instructions
+
+@example
+get_id_card
+   type         : generate
+   procedure    : App_Person_Get_ID_Info
+   command      : Make_ID_Card
+   content-type : application/pdf
+   file-name    : IDCard.pdf
+@end example
+
+
+This example wraps the results with a containing root element.  To accomodate
+the simplest case of a procedure that returns a single query, the default
+output writes each result as it encounters them.  This results in an invalid
+XML document
+default, each result is 
+
+@example
+get_id_card
+   type         : generate
+   procedure    : App_Person_Get_ID_Info
+   command      : Make_ID_Card
+   content-type : application/pdf
+   file-name    : IDCard.pdf
+   wrap         : resultset
+@end example
+
+
