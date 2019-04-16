@@ -2953,86 +2953,142 @@ void Schema::process_generate(void)
    {
       const char *wrap = m_mode->seek_value("wrap"); 
       const char *command = m_mode->seek_value("command");
+
       if (command)
       {
-         auto fsp = [this, &command, &wrap](StoredProc &sp)
+         char command_path[1000];
+         getcwd(command_path, sizeof(command_path));
+
+         strcat(command_path,"/");
+         strcat(command_path, s_command_directory);
+         // Save end of path string in order to truncate after
+         // calling access() to we can chdir to the host directory:
+         char *end = command_path + strlen(command_path);
+         strcat(command_path, command);
+
+         if (access(command_path, X_OK)==-1)
+            ifprintf(stderr,
+                     "Failed in attempt to confirm availability of '%s' (%d)\n",
+                     command,
+                     errno);
+
+         *end = '\0';
+
+         int  fd_near[2];
+         pipe(fd_near);
+         int fd_far[2];
+         pipe(fd_far);
+         
+         pid_t pid_near = fork();
+         if (pid_near == -1)
+         {
+            close(fd_near[0]);
+            close(fd_near[1]);
+            close(fd_far[0]);
+            close(fd_far[1]);
+            _exit(EXIT_FAILURE);
+         }
+         else if (pid_near == 0)
+         {
+            // Change working directory for command:
+            chdir(command_path);
+
+            // Child #1 for running external command
+            if (dup2(fd_near[0], STDIN_FILENO) == -1)
             {
-               int fd_in[2];
-               int fd_out[2];
+               ifprintf(stderr, "Failed to pipe stdin (%d)\n", errno);
+               _exit(EXIT_FAILURE);
+            }
+            else
+            {
+               close(fd_near[1]);
 
-               auto closer = [](int *fda) { close(fda[0]); close(fda[1]); };
-
-               // Upon any failure to get pipes, close any open ends
-               // and leave indicator of failure by setting fd_in[0] = -1
-               if (pipe(fd_in))
-                  fd_in[0] = -1;
-               else if (pipe(fd_out))
+               if (dup2(fd_far[1], STDOUT_FILENO) == -1)
                {
-                  (*closer)(fd_in);
-                  fd_in[0] = -1;
+                  ifprintf(stderr, "Failed to pipe stdout (%d)\n", errno);
+                  _exit(EXIT_FAILURE);
                }
-
-               if (fd_in[0]>=0)
+               else
                {
-                  pid_t pid_in = fork();
+                  close(fd_far[0]);
 
-                  if (pid_in == -1)
-                  {
-                     (*closer)(fd_in);
-                     (*closer)(fd_out);
-                  }
-                  else if (pid_in == 0)      // Child #1
-                  {
-                     if (chdir(s_command_directory)==-1)
-                        ifprintf(stderr, "In process_generate, chdir failed with errno = %d\n", errno);
+                  execl(command, command, nullptr);
+                  ifprintf(stderr,
+                           "execl failed, (%s), about to _exit(EXIT_FAILURE)\n",
+                           strerror(errno));
+                  _exit(EXIT_FAILURE);
+               }
+            }
+         }
 
-                     if (access(command, X_OK)==-1)
-                        ifprintf(stderr,
-                                 "Failed in attempt to confirm availability of '%s' (%d)\n",
-                                 command,
-                                 errno);
+         // Other processes, especially the parent, should return to
+         // the original working directory:
+         chdir(command_path);
+         *end = '\0';
 
-                     // Isn't the read end of a pipe blocking?  
-                     if (dup2(fd_in[0], STDIN_FILENO) == -1)
-                        ifprintf(stderr, "Failed to pipe stdin (%d)\n", errno);
+         close(fd_near[0]);
 
-                     (*closer)(fd_in);
+         pid_t pid_far = fork();
+         if (pid_far == -1)
+         {
+            close(fd_near[1]);
+            close(fd_far[0]);
+            close(fd_far[1]);
+         }
+         else if (pid_far == 0)
+         {
+            // Child #2 for transferring Child #1's output to m_out:
+            close(fd_near[0]);
+            close(fd_near[1]);
+            close(fd_far[1]);
 
-                     if (dup2(fileno(m_out), STDOUT_FILENO) == -1)
-                        ifprintf(stderr, "Failed to pipe stdout (%d)\n", errno);
-                     (*closer)(fd_out);
+            char buff[1024];
+            size_t count;
+            do
+            {
+               count = read(fd_far[0], buff, sizeof(buff));
+               if (count>0)
+                  ifwrite(buff, 1, count, m_out);
+            }
+            while (count > 0);
 
-                     execl(command, command, nullptr);
-                     ifprintf(stderr, "execl failed, returning an errno = %d (%s), about to _exit(EXIT_FAILURE)\n", errno, strerror(errno));
-                     _exit(EXIT_FAILURE);
-                  }
+            close(fd_far[0]);
+            _exit(EXIT_SUCCESS);
+         }
 
-                  // Parent:
-                  int status;
-                  FILE *f_out = fdopen(fd_in[1], "w");
-                  close(fd_in[0]);
-                  (*closer)(fd_out);
+         // Parent of both children must commence data transfer to Child #1
 
-                  if (wrap)
-                     ifprintf(f_out, "<%s>\n", wrap);
+         // Make FILE* alias for pipe's write end to feed external command:
+         FILE *f_out = fdopen(fd_near[1], "w");
 
-                  SimpleProcedure proc(sp.querystr(), sp.bindstack());
-                  Result_As_SchemaDoc resout(*m_specsreader, m_mode, m_mode_action, f_out);
+         // Close all pipes that are used elsewhere
+         close(fd_near[0]);
+         close(fd_far[0]);
+         close(fd_far[1]);
 
-                  proc.run(&s_mysql, this, &resout);
+         // Parent:
+         auto fsp = [this, &command, &command_path, &wrap, &f_out](StoredProc &sp)
+            {
+               if (wrap)
+                  ifprintf(f_out, "<%s>\n", wrap);
 
-                  if (wrap)
-                     ifprintf(f_out, "</%s>\n", wrap);
+               SimpleProcedure proc(sp.querystr(), sp.bindstack());
+               Result_As_SchemaDoc resout(*m_specsreader, m_mode, m_mode_action, f_out);
 
-                  // Close stream to signal completion to child.
-                  ifclose(f_out);
+               proc.run(&s_mysql, this, &resout);
 
-                  waitpid(pid_in, &status, 0);
-               }            
+               if (wrap)
+                  ifprintf(f_out, "</%s>\n", wrap);
+
+               // Close stream to signal completion to child.
+               ifclose(f_out);
+
             };
          Generic_User<StoredProc, decltype(fsp)> spu(fsp);
-
          StoredProc::build(&s_mysql, procname, spu);
+
+         int status;
+         waitpid(pid_far, &status, 0);
       }
       else // No command instruction
       {
