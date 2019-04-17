@@ -2810,12 +2810,16 @@ void Schema::process_response_mode(void)
       const char *filename = m_mode->seek_value("filename");
       if (!filename)
          filename = m_mode->seek_value("file-name");
+
       if (filename)
       {
          ifputs("Content-Disposition: filename=\"", s_header_out);
          ifputs(filename, s_header_out);
          ifputs("\"\n", s_header_out);
       }
+      else if (m_mode_action==MACTION_EXPORT)
+         ifputs("Content-Disposition: filename=\"export.ods\"\n", s_header_out);
+
       if (m_mode_action==MACTION_EXPORT)
          print_FODS_ContentType();
       else
@@ -3051,8 +3055,10 @@ void Schema::process_generate(void)
                   ifwrite(buff, 1, count, m_out);
             }
             while (count > 0);
-
             close(fd_far[0]);
+
+            FCGI_fflush(m_out);
+
             _exit(EXIT_SUCCESS);
          }
 
