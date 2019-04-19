@@ -59,8 +59,8 @@ endef
 all: schema.fcgi
 
 schema.fcgi : ${objlist} ${hpplist} ${VERSION_DEPS}
-	$(call increment_file,$(VERSION_PATCH_FILE))
 	$(CXX) -o schema.fcgi ${objlist} ${LINK_FLAGS}
+	$(call increment_file,$(VERSION_PATCH_FILE))
 
 istdio.o : istdio.hpp istdio.cpp
 	$(CXX) $(CXXFLAGS) -c -o istdio.o istdio.cpp
