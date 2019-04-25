@@ -2935,6 +2935,72 @@ void Schema::process_export(void)
    
 }
 
+int pre_paramify_command(char *command)
+{
+   int count = 0;
+   char *ptr = command;
+   char *curparam = command;
+   while (*ptr)
+   {
+      if (*ptr=='\\')
+      {
+         ++ptr;
+         if (*ptr=='\0')
+            break;
+      }
+      else if (isspace(*ptr))
+      {
+         *(ptr++) = '\0';
+         // bleed-off extra spaces between parameters
+         while (*ptr && isspace(*ptr))
+            ++ptr;
+
+         // only count if a parameter follows the spaces
+         if (*ptr)
+         {
+            ++count;
+            curparam = ptr;
+         }
+         else
+            break;
+      }
+
+      ++ptr;
+   }
+
+   if (curparam < ptr)
+      ++count;
+
+   return count;
+}
+
+void paramify_command(char *command, char **arglist, int count)
+{
+   char *ptr = command;
+
+   int i = 0;
+   while (true)
+   {
+      arglist[i] = ptr;
+
+      if ( ++i < count )
+      {
+         // find end of current argument
+         while (*++ptr)
+            ;
+
+         // skip the \0:
+         ++ptr;
+
+         // Skip leading spaces that previous separated arguments:
+         while (isspace(*ptr))
+            ++ptr;
+      }
+      else
+         break;
+   }
+}
+
 /**
  * @brief Streams the XML output to an external command for the output
  *
@@ -2956,10 +3022,19 @@ void Schema::process_generate(void)
    if (procname)
    {
       const char *wrap = m_mode->seek_value("wrap"); 
+
+      // Copy command, then break into parameters for execv
       const char *command = m_mode->seek_value("command");
+      char *command_copy = static_cast<char*>(alloca(strlen(command)+1));
+      strcpy(command_copy, command);
+      int param_count = pre_paramify_command(command_copy);
+      char **arglist = static_cast<char**>(alloca((param_count+1) * sizeof(char*)));
+      paramify_command(command_copy, arglist, param_count);
+      arglist[param_count] = nullptr;
 
       if (command)
       {
+         char *cname = arglist[0];
          char command_path[1000];
          getcwd(command_path, sizeof(command_path));
 
@@ -2968,12 +3043,12 @@ void Schema::process_generate(void)
          // Save end of path string in order to truncate after
          // calling access() to we can chdir to the host directory:
          char *end = command_path + strlen(command_path);
-         strcat(command_path, command);
+         strcat(command_path, cname);
 
          if (access(command_path, X_OK)==-1)
             ifprintf(stderr,
                      "Failed in attempt to confirm availability of '%s' (%d)\n",
-                     command,
+                     command_path,
                      errno);
 
          *end = '\0';
@@ -3015,11 +3090,12 @@ void Schema::process_generate(void)
                else
                {
                   close(fd_far[0]);
+                  execv(cname, arglist);
 
-                  execl(command, command, nullptr);
                   ifprintf(stderr,
                            "execl failed, (%s), about to _exit(EXIT_FAILURE)\n",
                            strerror(errno));
+
                   _exit(EXIT_FAILURE);
                }
             }
