@@ -39,6 +39,27 @@ used to transform the output.  The external program, or a link to the program,
 must reside in a @emph{commands} directory that is a sibling of the directory
 from which the site is running.  @xref{Generate Commands}
 
+The external command must also accept data from @file{stdin} and write its
+output to @file{stdout}.
+
+A recent addition is the ability to specify command parameters with the
+command value.  The string parsing is not as sophisticated as a command
+line parser: it does not group the contents of quote or apostrophe marks.
+If a parameter includes spaces, they should be escaped with a backslash (\).
+
+In the following code, demonstrating type : generate and a command with
+parameters, @command{fop} the @emph{-xml -} accepts the XML file from @file{stdin}
+and @emph{-pdf -} writes the resultant pdf to @file{stdout}.
+
+@example
+make_letter
+   type         : generate
+   procedure    : App_Person_Letter
+   command      : fop -xml - -xsl make_letter.xsl -pdf -
+   content-type : application/pdf
+   filename     : person_letter.pdf
+@end example
+
 NOTE: The command instruction can be omitted to get raw XML that can be used
 for development and debugging.  If this instruction is omitted, despite an
 error message that will be written to @emph{stderr}, the untransformed XML
