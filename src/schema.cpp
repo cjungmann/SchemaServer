@@ -3022,18 +3022,18 @@ void Schema::process_generate(void)
    if (procname)
    {
       const char *wrap = m_mode->seek_value("wrap"); 
-
-      // Copy command, then break into parameters for execv
       const char *command = m_mode->seek_value("command");
-      char *command_copy = static_cast<char*>(alloca(strlen(command)+1));
-      strcpy(command_copy, command);
-      int param_count = pre_paramify_command(command_copy);
-      char **arglist = static_cast<char**>(alloca((param_count+1) * sizeof(char*)));
-      paramify_command(command_copy, arglist, param_count);
-      arglist[param_count] = nullptr;
 
       if (command)
       {
+         // Copy command, then break into parameters for execv
+         char *command_copy = static_cast<char*>(alloca(strlen(command)+1));
+         strcpy(command_copy, command);
+         int param_count = pre_paramify_command(command_copy);
+         char **arglist = static_cast<char**>(alloca((param_count+1) * sizeof(char*)));
+         paramify_command(command_copy, arglist, param_count);
+         arglist[param_count] = nullptr;
+
          char *cname = arglist[0];
          char command_path[1000];
          getcwd(command_path, sizeof(command_path));
