@@ -5,10 +5,11 @@ This chapter provides instructions for two setup scenarios, for the
 server environment itself, and for a new site.
 
 @menu
-* Download and Install::    Get the server files from GitHub
-* Create a New Site::       Directories and files, with MySQL setup
-* Apache Configuration::    Contents and destination for configuration file
-* Make Site Available::     Make entry in hosts file or DNS account
+* Download and Install::      Get the server files from GitHub
+* Configure MySQL::           Global settings and MySQL user account
+* Create a New Site::         Directories and files, with MySQL setup
+* Apache Configuration::      Contents and destination for configuration file
+* Make Site Available::       Make entry in hosts file or DNS account
 @end menu
 
 @node Download and Install
@@ -41,7 +42,118 @@ assume this is the chosen directory.
 @end table
 
 
+@node Configure MySQL
+@section Configure MySQL
 
+@menu
+* MySQL Global Configuration::
+* Create MySQL User Account::
+* Set Default MySQL User::
+* Developer MySQL User::
+@end menu
+
+@node MySQL Global Configuration
+@subsection MySQL Global Configuration
+
+The Schema Framework, in which SchemaServer resides, needs to occasionally
+manage expired sessions, and may well need to do other scheduled tasks.
+For MySQL to run scheduled tasks, the @emph{event_scheduler} must be
+enabled.
+
+Add the following text to the global MySQL configuration file, @file{/etc/mysql/my.cnf}:
+
+@example
+[mysqld]
+event_scheduler=ON
+@end example
+
+@node Create MySQL User Account
+@subsection Create MySQL User Account
+
+Part of the Schema Server security provisions is to restrict interaction
+with MySQL to running stored procedures, with one exception discussed below.
+Knowing that an ad hoc query will never be run, the MySQL user can safely
+disable that privilege.
+
+The recommendation is to create a limited-privilege user named @emph{webuser}
+to be used by @code{schema.fcgi}.  Several script generators make that
+assumption, so care must be taken if an alternate MySQL account is to be used.
+
+Create the @emph{webuser} account with the following commands:
+
+@example
+mysql> CREATE USER 'webuser'@@'localhost' IDENTIFIED BY 'webuser';
+mysql> GRANT EXECUTE ON *.* to 'webuser'@@'localhost';
+mysql> GRANT FILE ON *.* to 'webuser'@@'localhost';
+mysql> FLUSH PRIVILEGES;
+@end example
+
+Notes on the example
+
+@table @strong
+@item IDENTIFIED BY 'webuser'
+The password is simple and guessable.  Security should be ensured by
+setting extremely limited privileges of the user.
+@item GRANT EXECUTE ON
+The only privilege is to execute, that is, CALLing stored procedures.
+The procedures can be further secured by using session variables and
+having the procedures check their status before running any queries.
+@item GRANT FILE ON
+Allows importing data.  Omit this line if importing will not be offered
+because there are some security issues with this privilege.  See
+@xref{Import Security} for a discussion about how the system is secured
+despite the aforementioned vulnerability.
+@item FLUSH PRIVILEGES
+Activates the new privileges.
+@end table
+
+Confirm the @emph{webuser} privileges with the following command
+entered in the OS shell, looking for all but @emph{Execute_priv}
+and @emph{File_priv} lines set to N:
+
+@example
+mysql -R -e "SELECT * FROM mysql.user WHERE user='webuser'"
+@end example
+
+@node Set Default MySQL User
+@subsection Set Default MySQL User
+
+Prepare the server to use 'webuser' by setting a [client] entry
+in the global MySQL configuration file.
+
+Add the following lines to @file{/etc/mysql/my.cnf}:
+
+@example
+[client]
+host = localhost
+user = webuser
+password = webuser
+@end example
+
+This client entry will be the default MySQL user that will automatically
+be used in the absence of other credentials.
+
+@node Developer MySQL User
+@subsection Developer MySQL User
+
+Although the default user should be setup as a limited @emph{webuser}
+account, preparing any SchemaFramework site will require extensive
+privileges.  Make sure such a user is available
+
+This developer creates a client entry in @file{~/.my.cnf} for more
+privileged access during development, especially when loading the
+stored procedures.
+
+@example
+[client]
+host = localhost
+user = root
+password = rootpassword
+@end example
+
+Of course, @emph{root} may also be a bad account choice for development,
+and the @emph{rootpassword} is a placeholder for the real password
+that should replace the password entry.
 
 
 @node Create a New Site

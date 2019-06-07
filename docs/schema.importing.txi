@@ -1,5 +1,51 @@
 @node Importing
 @chapter Importing
 
-This chapter is an empty target placeholder for the main menu and
-cross-referencing.
+Many of resources that explain this feature are found in the User Guide of the
+SchemaServer repository: @url{https://github.com/cjungann/schemafw}.  The link
+to the User Guide is in the README.md document that is displayed on the
+GitHub page.  This page is a summary and reference to the external resources.
+
+@menu
+* Gnumeric Prerequisite::
+* Preparing to Import::
+* Import Security::
+@end menu
+
+@node Gnumeric Prerequisite
+@section Gnumeric Prerequisite
+
+Importing into the SchemaServer is done with the help of @emph{Gnumeric}, and
+through that program, can read the spreadsheet formats supported by Gnumeric.
+Install Gnumeric with your package manager, or from the source code found at
+@url{www.gnumeric.org}.
+
+@node Preparing to Import
+@section Preparing to Import
+
+For guidance in creating an import interaction, use the @emph{gensfw} utility
+and enable the import interaction.  The generated SQL and SRM files are, if not
+adequate in themselves, at least a good example of how to setup an import
+interaction, including confirming the uploaded data and accepting or abandoning
+the data.
+
+The repository includes a page with much more detail about the import feature:
+@url{https://github.com/cjungmann/schemafw/blob/master/userguide/ImportingData.md}.
+
+
+@node Import Security
+@section Import Security
+
+In order to make import usable, SchemaServer uses the Load Data Infile feature
+of MySQL.  This requires that the FILE privilege is granted to the MySQL user
+account, which is a known to be security risk.
+
+The repository includes a page that explains how the FILE privilege is
+handled: @url{https://github.com/cjungmann/schemafw/blob/master/userguide/LoadDataLocalInfile.md,Load Data,}.
+
+In short, however, the FILE security is restored by replacing the default
+infile handler function with a no operation function that always returns failure.
+When Schema Server is about to import a file, the no operation function is
+replaced with a working function that only accepts a non-typeable filename,
+restoring the no operation function when the import is completed.
+
