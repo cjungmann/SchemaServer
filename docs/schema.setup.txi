@@ -223,6 +223,44 @@ $ sudo emacs tables.sql
 @node Apache Configuration
 @section Apache Configuration
 
+Running SchemaServer under Apache requires certain global
+settings as well as site-specific settings.
+
+@menu
+* Global Apache Setup::
+* Site Setup for Apache::
+@end menu
+
+@node Global Apache Setup
+@subsection Global Apache Setup
+
+In order to Apache to serve content from a directory,
+Apache must be informed of the directory in the file
+@file{/etc/apache2/apache2.conf}.
+
+By default, the @file{apache2.conf} file includes a
+section that enables the directory @file{/var/www} to
+serve content.  If your application will reside in
+a different directory, you will have to create a
+configuration setting for the directory.
+
+Here is an example of a directory entry:
+
+@example
+<Directory /home/chuck/www>
+   Options FollowSymLinks
+   AllowOverride None
+   Require all granted
+</Directory>
+@end example
+
+Note that the @emph{Options} entry usually includes
+the @emph{Indexes} value, which give a user directory
+access in some circumstances.  I removed @emph{Indexes}.
+
+@node Site Setup for Apache
+@subsection Site Setup for Apache
+
 The next step to creating a SchemaServer is to create and
 enable an Apache configuration file.
 
@@ -262,6 +300,19 @@ directory, enable the site with the following commands:
 $ sudo a2ensite webapp
 $ sudo service apache2 restart
 @end example
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @node Make Site Available
 @section Make Site Available
