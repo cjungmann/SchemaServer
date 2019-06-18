@@ -1,0 +1,77 @@
+@node Many-to-one Link Resources
+@chapter Many-to-one Link Resources
+
+It is a common model to associate one item with a group of other items.
+Examples of this would be a person's children, phone numbers, and
+email addresses.
+
+While it a common model, it is not trivial to implement.  In the interest
+of the philosophy of making challenging database tasks approachable, the
+SchemaServer system procedure @code{ssys_make_SFW_IntTable_from_list}
+converts a comma-separated list of integers into a temporary table of
+integers that can be used to save the links.
+
+@menu
+* Introducing ssys_make_SFW_IntTable_from_list::
+* Recommended DROP TABLE Command::
+* Many-to-one Example::
+@end menu
+
+@node Introducing ssys_make_SFW_IntTable_from_list
+@section Introducing ssys_make_SFW_IntTable_from_list
+
+The procedure creates a temporary table named @file{SFW_IntTable} in
+which the integers are saved, along with the position value in case it is
+needed.  The position value can be ignored in cases where the data will
+be returned in another order, but it is made available for places where
+the order is significant.
+
+@node Recommended DROP TABLE Command
+@section Recommended DROP TABLE Command
+
+It is @strong{recommended} that a procedure that uses the
+@strong{SFW_IntTable} should drop the table when finished with it.
+SchemaServer database connections, and the temporary tables residing
+therein, persist between responses.  If the @file{SFW_IntTable} table is
+not dropped, it may be available to another user.
+
+For data safety, the @file{SFW_IntTable} is conditionally dropped
+just before creating a new instance of the table.  This is a safety
+against carelessness.  However, an undropped table would still be
+available until the @code{ssys_make_SFW_IntTable_from_list} procedure
+is called again.
+
+@node Many-to-one Example
+@section Many-to-one Example
+
+In the following example, we have a procedure that associates a group of
+people as children of an individual.
+
+@example
+CREATE PROCEDURE App_Person_Set_Children(id INT UNSIGNED, plist VARCHAR(50))
+BEGIN
+   -- Always clear current list before possibly adding children:
+   DELETE
+     FROM Person2Children
+    WHERE person_id = id;
+
+   -- Make temporary table with plist:
+   CALL ssys_make_SFW_IntTable_from_list(plist);
+
+   -- Add linked values
+   INSERT
+     INTO Person2Children(person_id, child_id)
+   SELECT val
+     FROM SFW_IntTable
+    GROUP BY pos;
+
+   -- IMPORTANT: drop the generated table:
+   DROP TABLE SFW_IntTable;
+END $$
+@end example
+
+Another example of the use of this procedure is found in the 
+@ref{SelectX Input Widget,,,schemafw}, where the @code{selectx}
+control returns a comma-separated list of integers from a
+user interaction selecting multiple elements in the selection
+widget.
