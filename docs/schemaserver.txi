@@ -53,7 +53,7 @@ production.
 * SRM Scripts::                  Define and describe SRM files
 * XML Document Shaping::         Modify response mode output
 * Shared Elements::              Define once and use multiple times
-* Many-to-one Link Resources::   Procedures and tables for many-to-one operations
+* Builtin Useful MySQL Procedures::
 * Autoload::                     Using Autoload Feature
 * Auto-called MySQL Procedures:: Directly-called Procedures
 * Sample Files::                 Simple Examples to Aid Development
@@ -95,7 +95,7 @@ relatively simple and extremely flexible.
 @include schema.srmscripts.txi
 @include schema.shaping.txi
 @include schema.sharedels.txi
-@include schema.many2one.txi
+@include schema.useful_procs.txi
 
 @node Autoload
 @chapter Autoload

@@ -1,0 +1,192 @@
+@node Builtin Useful MySQL Procedures
+@chapter Builtin Useful MySQL Procedures
+
+The setup procedure for SchemaServer loads many MySQL procedures and a
+few functions.  For the most part, these functions and procedures are
+called by the SchemaServer server program @command{schema.fcgi}.
+
+Some of these procedures and functions are not used by
+@command{schema.fcgi} but are rather provided as shortcuts for developers
+to provide simple solutions for a few common development needs.
+
+These procedures and functions, with the exception of
+@code{make_randstr}, are found in @file{sys_procs.sql}, usually found
+in the directory @file{/usr/local/lib/SchemaServer/install}.
+
+@menu
+* ssys_hash_password_with_salt::     Make a hash string for confirming a password
+* ssys_confirm_salted_hash::         Confirm that a password matches a salted hash
+* ssys_make_SFW_IntTable_from_list:: Make a temporary table from comma-separated integers
+* ssys_month_info_result::           Returns some information about a date
+* ssys_month_get_first_and_last::    Returns day-of-week for a month's first and last day
+* make_randstr::                     Highly-recommended UDF for making random string
+@end menu
+
+@node ssys_hash_password_with_salt
+@section ssys_hash_password_with_salt
+
+@code{ssys_hash_password_with_salt(password VARCHAR(255), salt_string VARCHAR(255))}
+returns a @code{BINARY(16)}.
+
+This is a very simple function that accepts two strings, a password and
+a salt string.  The resulting hash is a one-way conversion.  There is
+no way to recover the password from the hash outside of a brute-force
+attempt to match every possible string.
+
+It uses the somewhat disreputable @code{MD5} hashing function, but
+hashing a salted string with @code{MD5} is sufficiently secure if the
+hashes and salts are also secure.  If a malicious party has access to a
+hash and it's salt, even more secure hash functions can be broken by a
+sufficiently motivated party.
+
+Example Schema Framework web applications separate the hash and salt
+values into separate tables as an additional security measure.  That way,
+if the table with hash values is compromised, the data doesn't indicate
+that a salt was used, nor where to find the salt.
+
+The previous advice, to use @command{drop salt} in the SRM file, is
+replaced with the following example of creating the salt string with
+@ref{make_randstr}.  The UDF @command{make_randstr} can be used outside
+of the SchemaServer environment, which is useful for cron jobs that might
+be engaged to perform certain tasks.
+
+@example
+CREATE PROCEDURE save_password(password VARCHAR(20))
+BEGIN
+   DECLARE salt CHAR(32) DEFAULT make_randstr(32);
+   DECLARE hash BINARY(16);
+
+   SELECT ssys_hash_password_with_salt(password, salt) INTO hash;
+
+   -- Save the salt and hash to the appropriate tables
+
+END $$
+@end example
+
+
+@node ssys_confirm_salted_hash
+@section ssys_confirm_salted_hash
+
+@code{ssys_confirm_salted_hash(hash BINARY(16), salt VARCHAR(255), password(255)}
+returns @code{BOOLEAN}.
+
+After a password has been hashed with salt, this function will give a
+thumbs-up or thumbs-down on whether a password matches.
+
+@example
+CREATE PROCEDURE App_User_Login(email VARCHAR(128), password VARCHAR(20))
+BEGIN
+   DECLARE valid INT UNSIGNED;
+
+   SELECT COUNT(*)
+     FROM User u
+          INNER JOIN Salt s ON u.id = s.id_user
+    WHERE u.email = email
+      AND ssys_confirm_salted_hash(u.pword_hash, s.salt, password);
+
+   IF valid = 1 THEN
+      SELECT 0 AS error, 'Logged in' AS msg;
+   ELSE IF valid = 0 THEN
+      SELECT 1 AS error, 'Invalid credentials' AS msg;
+   END IF;
+END $$
+@end example
+
+@include schema.makeIntTable.txi
+
+@node ssys_month_info_result
+@section ssys_month_info_result
+
+Given the number of days in a month, and the weekday name of the first
+day, it is easy generate a month table.  The procedure,
+@code{ssys_month_info_result} provides these values, along some other
+information to aid in generating calendars.
+
+This information is meant to be used by a Javascript function or a
+XSLT transformation to render a calendar.  It should be called to
+return an additional result that will be used on the client
+
+@code{ssys_month_info_result(ddate DATE)} executes a query whose result
+fields are:
+@table @strong
+@item month
+A string that identifies the month in the format YYYY-MM.
+@item initalDay
+A number in the range of 0-6, indicating the day of the week of the
+first day of the month.  0 is Sunday, 1 is Monday, etc.
+@item countOfDays
+The number of days in the month indicated by @emph{ddate}.  January has
+31, February may have either 28 or 29, March has 31, etc.
+@item today
+A string identifying the submitted date in format YYYY-MM-DD.
+@end table
+
+@example
+CREATE PROCEDURE App_User_Appointments(user_id INT UNSIGNED)
+BEGIN
+   DECLARE tday DATE DEFAULT NOW();
+   DECLARE month_name CHAR(7) DEFAULT DATE_FORMAT(tday, '%Y-%m');
+
+   -- First result, list of events to plot in calendar
+   SELECT ename, edate
+     FROM Events
+    WHERE Events.month_name = month_name;
+
+   -- Second result, calendar rendering data:
+   CALL ssys_month_info_result(tday);
+END $$
+@end example
+
+@node ssys_month_get_first_and_last
+@section ssys_month_get_first_and_last
+
+This procedure @emph{returns}, through OUT parameters, the dates for the
+first and last days of the submitted month.  This procedure is meant to
+provide date values that can be used as a range for selecting a set of
+records in a date-indexed table.
+
+@code{ssys_month_get_first_and_last(target DATE, OUT first_day DATE, OUT last_day DATE)}
+
+@example
+CREATE PROCEDURE App_User_Appointments(user_id INT UNSIGNED)
+BEGIN
+   DECLARE fday, lday DATE;
+
+   CALL ssys_month_get_first_and_last(NOW(), fday, lday);
+
+   SELECT ename, edate
+     FROM Events
+    WHERE Events.edate >= fday
+      AND Events.edate <= lday;
+END $$
+@end example
+
+@node make_randstr
+@section make_randstr
+
+This UDF (User-defined Function) calls a C function from a separate
+project.  It @strong{is not} included in SchemaServer nor is it installed
+in @file{sys_procs.sql}.
+
+An MySQL example that uses this function is found in
+@ref{ssys_hash_password_with_salt}.
+
+Install this function by cloning the project found at
+@url{https://github.com/cjungmann/mysql_randstr}, then compiling and
+installing the project:
+
+@example
+$ cd /usr/local/src
+/usr/local/src$ git clone https://github.com/cjungmann/mysql_randstr.git
+/usr/local/src$ cd mysql_randstr
+/usr/local/src/mysql_randstr$ sudo ./configure
+/usr/local/src/mysql_randstr$ sudo make
+/usr/local/src/mysql_randstr$ sudo make install
+@end example
+
+The @emph{sudo make install} not only installs the executable, but
+also adds the USF function @command{make_randstr} to MySQL.
+
+The installation process has not been tested on many systems.  If
+there is a problem, please refer to the github page listed above for
+information that may help resolve the issues.

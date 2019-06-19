@@ -1,5 +1,5 @@
-@node Many-to-one Link Resources
-@chapter Many-to-one Link Resources
+@node ssys_make_SFW_IntTable_from_list
+@section ssys_make_SFW_IntTable_from_list
 
 It is a common model to associate one item with a group of other items.
 Examples of this would be a person's children, phone numbers, and
@@ -18,7 +18,7 @@ integers that can be used to save the links.
 @end menu
 
 @node Introducing ssys_make_SFW_IntTable_from_list
-@section Introducing ssys_make_SFW_IntTable_from_list
+@subsection Introducing ssys_make_SFW_IntTable_from_list
 
 The procedure creates a temporary table named @file{SFW_IntTable} in
 which the integers are saved, along with the position value in case it is
@@ -27,7 +27,7 @@ be returned in another order, but it is made available for places where
 the order is significant.
 
 @node Recommended DROP TABLE Command
-@section Recommended DROP TABLE Command
+@subsection Recommended DROP TABLE Command
 
 It is @strong{recommended} that a procedure that uses the
 @strong{SFW_IntTable} should drop the table when finished with it.
@@ -42,7 +42,7 @@ available until the @code{ssys_make_SFW_IntTable_from_list} procedure
 is called again.
 
 @node Many-to-one Example
-@section Many-to-one Example
+@subsection Many-to-one Example
 
 In the following example, we have a procedure that associates a group of
 people as children of an individual.
