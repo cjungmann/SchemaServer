@@ -407,40 +407,80 @@ double double_from_stream(IStreamer &s)
 
 mydate mydate_from_stream(IStreamer &s)
 {
-   mydate     rval;
-   unsigned   *arr[6] = { &rval.m_year, &rval.m_month, &rval.m_day,
+   mydate   rval;
+   unsigned temp = 0;
+   unsigned *arr[6] = { &rval.m_year, &rval.m_month, &rval.m_day,
                         &rval.m_hour, &rval.m_minute, &rval.m_second };
-   char       terminators[6] = {'-','-','T',':',':',' '};
-   char       ch;
+   int      index=0;
+   char     arr_delim[] = {'-', '/', 'T', ' ', ':', 'a', 'A', 'p', 'P'};
+   char     ch;
+
    const char *digit;
+   const char *delim;
+   bool date_error = false;
 
-   int index = -1;
-
-   while ((ch=s.getc())!=EOF)
+   while (!date_error && (ch=s.getc())!=EOF)
    {
-      if (index>5)
-         continue;
-      
       digit = strchr(uint_allowed, ch);
-
       if (digit)
       {
-         if (index<0)
-            ++index;
-         
-         *arr[index] *= 10;
-         *arr[index] += *digit - '0';
+         temp *= 10;
+         temp += *digit - '0';
       }
-      else
+      else if ((delim = strchr(arr_delim, ch)))
       {
-         if (index<0)
-            continue;
-         else if (ch==terminators[index])
-            ++index;
-         else
-            index = 6;
+         switch(*delim)
+         {
+            case '/':
+            case '-':
+               if (index < 3)
+               {
+                  *arr[index] = temp;
+                  ++index;
+                  temp = 0;
+               }
+               else
+                  date_error = true;
+               break;
+            case 'T':
+            case ' ':
+               if (index == 2)
+               {
+                  *arr[index] = temp;
+                  ++index;
+                  temp = 0;
+               }
+               else
+                  date_error = true;
+               break;
+            case ':':
+               if (index == 0)
+                  index = 3;
+
+               *arr[index] = temp;
+               ++index;
+               temp = 0;
+               break;
+
+            default:
+               if (temp)
+               {
+                  if (index==0)
+                     index = 3;
+                  *arr[index] = temp;
+                  temp = 0;
+               }
+
+               if ((*delim=='p' || *delim=='P') && rval.m_hour<12)
+                  rval.m_hour += 12;
+               break;
+         }
       }
    }
+
+   // Save last number if exited loop before saving it:
+   if (temp && index<6 && !date_error)
+      *arr[index] = temp;
 
    return rval;
 }
@@ -657,24 +697,6 @@ void test_string_to_double(void)
    }
 }
 
-void test_string_to_date(void)
-{
-   const char *test = "2015-06-01T04:11:00";
-   StringStreamer s(test);
-   mydate md = mydate_from_stream(s);
-
-   printf("md fields:\n"
-          "year:   %4u\n"
-          "month:  %02u\n"
-          "day:    %02u\n"
-          "hour:   %02u\n"
-          "minute: %02u\n"
-          "second: %02u\n",
-          md.m_year, md.m_month, md.m_day, md.m_hour, md.m_minute, md.m_second);
-   
-}
-
-
 struct REC
 {
    unsigned m_id;
@@ -756,6 +778,29 @@ void test_random_string(void)
           make_random_string(buff, 11));
 }
 
+void show_string_to_date(const char* datestr)
+{
+   StringStreamer s(datestr);
+   mydate mdate = mydate_from_stream(s);
+   printf("%20s -> %4d/%02d/%02d %02d:%02d:%02d\n",
+          datestr,
+          mdate.m_year, mdate.m_month, mdate.m_day, mdate.m_hour, mdate.m_minute, mdate.m_second);
+
+   // mdate.print(stdout, mydate::PT_DATETIME);
+}
+
+void test_string_to_date(void)
+{
+   show_string_to_date("2019-07-12 7:25:14");
+   show_string_to_date("2020-11-02 6am");
+   show_string_to_date("2020-11-02 6:00:01pm");
+   show_string_to_date("2020/11/02T6:00:01pm");
+   show_string_to_date("6:00");
+   show_string_to_date("6AM");
+   show_string_to_date("6PM");
+   show_string_to_date("6:00:01pm");
+}
+
 
 
 int main(int argc, char **argv)
@@ -778,7 +823,8 @@ int main(int argc, char **argv)
 
    // printf("Testing get_schema_path, which returns \"%s\"\n", temp_schema_path());
 
-   test_random_string();
+   // test_random_string();
+   test_string_to_date();
    
    return 0;
 }
