@@ -2213,7 +2213,7 @@ void Schema::save_stdin(const char *target)
    else
       error = strerror(errno);
 
-   sprintf(buff, "Read %lu, wrote %lu bytes.", total_read, total_written);
+   sprintf(buff, "Read %zu, wrote %zu bytes.", total_read, total_written);
 
    print_message_as_xml(m_out,
                         (error ? "error" : "result"),
@@ -4243,7 +4243,7 @@ void Schema::resolve_enum_set_references(BindStack *bs_schema)
 
    // 2. Make typestr for procedure parameter to build the BindStack:
    char tstr[6];
-   sprintf(tstr,"s%lu", param_string_length);
+   sprintf(tstr,"s%zu", param_string_length);
    BindStack::build(tstr,cb_run);
 }
 

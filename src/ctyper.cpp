@@ -315,7 +315,7 @@ void t_make_typestr(const IClass* const* array,
                size_t len = (*aptr)->data_length();
                // Match limit above, up to 5-digits, to prevent buffer overflow
                if (len < 100000)
-                  tptr += sprintf(tptr, "%lu", len);
+                  tptr += sprintf(tptr, "%zu", len);
             }
             else
                ++tptr;
