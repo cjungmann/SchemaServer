@@ -54,7 +54,6 @@ public:
 
    inline operator const char *(void) const   { return _addr(); }
    inline const char* str(void) const         { return _addr(); }
-   inline operator line_handle(void) const    { return lhandle(); }
 
 
    inline bool is_equal_to(const char *str) const          { return valid() && strcmp(str,static_cast<const char*>(_addr()))==0; }
