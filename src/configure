@@ -1,8 +1,7 @@
 #!/bin/bash
+# -*- mode:sh -*-
 
 output=Makefile
-
-CGI_PATH=$(grep 'ScriptAlias\s\+\/cgi-bin' /etc/apache2/conf-available/serve-cgi-bin.conf | grep -o '\S\+$')
 
 # truncate output file:
 >${output}
@@ -11,7 +10,20 @@ CGI_PATH=$(grep 'ScriptAlias\s\+\/cgi-bin' /etc/apache2/conf-available/serve-cgi
 echo "MYSQL_COMPILE_FLAGS = $(mysql_config --cflags)" >> ${output}
 echo "MYSQL_LINK_FLAGS = $(mysql_config --libs)" >> ${output}
 
-echo "CGI_PATH=${CGI_PATH}" >> ${output}
+
+# Add Apache stuff if Apache is installed:
+which apache2
+if [ $? -eq 0 ]; then
+	declare -a cgi_args=(
+		'ScriptAlias\s\+\/cgi-bin'
+		/etc/apache2/conf-available/serve-cgi-bin.conf
+ | grep -o '\S\+$')
+	)
+	CGI_PATH=$( grep "${cgi_args[@]}" | grep -o '\S\+$' )
+
+	echo "CGI_PATH=${CGI_PATH}" >> ${output}
+fi	
+
 
 # surround EOF with single-quotes to prevent $ expansion in heredoc:
 # Overriding -g with -ggdb on linux
@@ -54,6 +66,17 @@ define install_documentation
 	gzip -f                  /usr/share/man/man7/schema.fcgi.7
 
 	$(if $(shell which makeinfo 2>/dev/null ), $(call install_info))
+endef
+
+define install_for_apache
+	install -D --mode=644 ../install/SchemaServer.conf /etc/apache2/conf-available/SchemaServer.conf
+	a2enconf SchemaServer
+endef
+
+define apache_stop_update
+	sudo /etc/init.d/apache2 stop
+	install -D --mode=755 schema.fcgi           /usr/local/lib/cgi-bin/schema.fcgi
+	sudo /etc/init.d/apache2 start
 endef
 
 all: schema.fcgi
@@ -134,8 +157,9 @@ install:
 	# install utilities
 	$(call install_utilities)
 	# Prepare Apache to recognize schema.fcgi as a document handler
-	install -D --mode=644 ../install/SchemaServer.conf /etc/apache2/conf-available/SchemaServer.conf
-	a2enconf SchemaServer
+	ifdef $(CGI_PATH)
+		install_for_apache
+	endif
 
 update-docs:
 	$(call install_documentation)
@@ -147,9 +171,9 @@ update-server:
 	install -D --mode=755 schema.fcgi           /usr/local/lib/cgi-bin/schema.fcgi
 
 stop-update:
-	sudo /etc/init.d/apache2 stop
-	install -D --mode=755 schema.fcgi           /usr/local/lib/cgi-bin/schema.fcgi
-	sudo /etc/init.d/apache2 start
+	ifdef $(CGI_PATH)
+	  apache_stop_update
+	endif
 
 update-installs:
 	cp ../install/sys_procs.sql                 /usr/local/lib/SchemaServer/sys_procs.sql
@@ -157,8 +181,10 @@ update-installs:
 
 uninstall:
 	# disable apache configuration ahead of remove the conf file
-	a2disconf SchemaServer
-	rm -f /etc/apache2/conf-available/SchemaServer.conf
+	ifdef $(CGI_PATH)
+		a2disconf SchemaServer
+		rm -f /etc/apache2/conf-available/SchemaServer.conf
+	endif
 	# remove executable and its link
 	rm -f /usr/bin/schema.fcgi
 	rm -r -f /usr/local/lib/cgi-bin/schema.fcgi
@@ -206,13 +232,3 @@ include version.mak
 EOF
 ) >> ${output}
 
-
-
-
-# Move Local Variables to end of file to make sure they work.
-
-# Local Variables:
-# mode: makefile-gmake
-# End:
-
- 
