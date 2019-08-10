@@ -17,7 +17,6 @@ if [ $? -eq 0 ]; then
 	declare -a cgi_args=(
 		'ScriptAlias\s\+\/cgi-bin'
 		/etc/apache2/conf-available/serve-cgi-bin.conf
- | grep -o '\S\+$')
 	)
 	CGI_PATH=$( grep "${cgi_args[@]}" | grep -o '\S\+$' )
 
