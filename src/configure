@@ -78,8 +78,8 @@ define install_for_apache
 endef
 
 define uninstall_for_apache
-		a2disconf SchemaServer
-		rm -f /etc/apache2/conf-available/SchemaServer.conf
+	a2disconf SchemaServer
+	rm -f /etc/apache2/conf-available/SchemaServer.conf
 endef
 
 define apache_stop_update
