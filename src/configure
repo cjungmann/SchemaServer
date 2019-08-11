@@ -42,6 +42,11 @@ adbranch.hpp datastack.hpp specsreader.hpp prandstr.hpp vclasses.hpp \
 ctyper.hpp bindc.hpp bindstack.hpp procedure.hpp storedproc.hpp fods.hpp \
 schema.hpp multipart_pull.hpp  mysql_loaddata.hpp linebuffer.hpp
 
+WEBHOST_INSTALL=
+ifdef CGI_PATH
+	WEBHOST_INSTALL="install_for_apache"
+endif
+
 define install_utilities
 	install -D --mode=755 ../utilities/ss_chkprocs             /usr/local/lib/SchemaServer/utilities/ss_chkprocs
 	install -D --mode=755 ../utilities/ss_chksite              /usr/local/lib/SchemaServer/utilities/ss_chksite
@@ -156,9 +161,7 @@ install:
 	# install utilities
 	$(call install_utilities)
 	# Prepare Apache to recognize schema.fcgi as a document handler
-	ifdef $(CGI_PATH)
-		install_for_apache
-	endif
+	$(call WEBHOST_INSTALL)
 
 update-docs:
 	$(call install_documentation)
@@ -170,7 +173,7 @@ update-server:
 	install -D --mode=755 schema.fcgi           /usr/local/lib/cgi-bin/schema.fcgi
 
 stop-update:
-	ifdef $(CGI_PATH)
+	ifdef CGI_PATH
 	  apache_stop_update
 	endif
 
@@ -180,7 +183,7 @@ update-installs:
 
 uninstall:
 	# disable apache configuration ahead of remove the conf file
-	ifdef $(CGI_PATH)
+	ifdef CGI_PATH
 		a2disconf SchemaServer
 		rm -f /etc/apache2/conf-available/SchemaServer.conf
 	endif
