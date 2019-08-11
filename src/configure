@@ -10,7 +10,6 @@ output=Makefile
 echo "MYSQL_COMPILE_FLAGS = $(mysql_config --cflags)" >> ${output}
 echo "MYSQL_LINK_FLAGS = $(mysql_config --libs)" >> ${output}
 
-
 # Add Apache stuff if Apache is installed:
 which apache2 > /dev/null
 if [ $? -eq 0 ]; then
@@ -41,11 +40,6 @@ hpplist=xmlutils.hpp istdio.hpp qstringer.hpp genericuser.hpp advisor.hpp \
 adbranch.hpp datastack.hpp specsreader.hpp prandstr.hpp vclasses.hpp \
 ctyper.hpp bindc.hpp bindstack.hpp procedure.hpp storedproc.hpp fods.hpp \
 schema.hpp multipart_pull.hpp  mysql_loaddata.hpp linebuffer.hpp
-
-WEBHOST_INSTALL=
-ifdef CGI_PATH
-	WEBHOST_INSTALL="install_for_apache"
-endif
 
 define install_utilities
 	install -D --mode=755 ../utilities/ss_chkprocs             /usr/local/lib/SchemaServer/utilities/ss_chkprocs
@@ -166,7 +160,7 @@ install:
 	# install utilities
 	$(call install_utilities)
 	# Prepare Apache to recognize schema.fcgi as a document handler
-	$(call WEBHOST_INSTALL)
+	$(if $(CGI_PATH), $(call install_for_apache))
 
 update-docs:
 	$(call install_documentation)
