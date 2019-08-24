@@ -85,6 +85,8 @@ public:
    const BindC* find(const char *name) const { return static_cast<const BindC*>(data(name)); }
    BindC* find(const char *name)             { return static_cast<BindC*>(data(name)); }
 
+   void walk_binds(bool print=false) const;
+
 protected:
    static const int s_max_buffer_length = 1024;
 

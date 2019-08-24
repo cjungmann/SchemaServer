@@ -158,6 +158,42 @@ void BindStack::t_build(const char *typestr, IGeneric_Callback<BindStack> &user)
    user(bs);
 }
 
+void BindStack::walk_binds(bool print) const
+{
+   unsigned stop = count();
+   const char* name;
+   const char* value;
+   for (unsigned i=0; i<stop; ++i)
+   {
+      line_handle  current_handle = line_by_index(i);
+      const BindC& current_bindc = object(i);
+
+      name = current_handle;
+      value = static_cast<const char*>(current_bindc.m_data);
+
+      if (print)
+      {
+         // ifputs("[31m", stderr);
+         ifprintf(stderr, "Param %s ", name);
+         if (current_bindc.is_string_type())
+         {
+            if (current_bindc.is_truncated())
+            {
+               for (int i=0; i<10; ++i)
+                  ifputc(value[i], stderr);
+            }
+            else
+               ifprintf(stderr, "\"%s\"", value);
+         }
+         else
+            ifprintf(stderr, " non string");
+
+         ifputc('\n',stderr);
+         // ifputs("[0m", stderr);
+      }
+   }
+}
+
 
 #ifdef INCLUDE_BINDSTACK_MAIN
 
