@@ -4570,6 +4570,10 @@ bool Schema::set_binds(DataStack<BindC> &ds) const
       }
    }
 
+   // Uncomment (and change parameter if appropriate) this line
+   // for confirming the contents of the Bound Parameters:
+   // static_cast<BindStack&>(ds).walk_binds(true);
+
    return carryon;
 }
 
