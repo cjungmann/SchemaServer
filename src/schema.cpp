@@ -74,6 +74,7 @@ const char *arr_root_reserved[] = {
    "session-type",
    "tag",
    "type",
+   "vresult",
    "xml-stylesheet",
    nullptr
 };
@@ -809,7 +810,6 @@ void Schema_Printer::print(const ab_handle *schema, const char *default_name)
          find_and_print_schema_fields(schema);
 
       print_adhoc_elements(m_out, schema, arr_schema_reserved);
-//      m_specsreader.print_sub_elements(m_out, schema, arr_schema_reserved);
    }
    else if (m_bindstack)
       print_schema_fields(nullptr);
@@ -3913,14 +3913,23 @@ void Schema::process_root_branch(const ab_handle *mode_root,
             print_message_as_xml(m_out, "error", e.what(), "unexpected exception");
          }
 
+         int extra_results = m_number_of_results;
          const auto *qstrmode = m_mode->seek("qstring");
          if (qstrmode && m_qstringer)
          {
             ifprintf(m_out,
                      "<qstring rndx=\"%d\" row-name=\"row\" type=\"variables\">\n",
-                     m_number_of_results+1);
+                     ++extra_results);
             m_qstringer->xmlize("row", m_out);
             ifputs("</qstring>\n", m_out);
+         }
+
+         const auto *vresult = m_mode->seek("vresult");
+         if (vresult)
+         {
+            ifprintf(m_out, "<vresult rndx=\"%d\">\n", ++extra_results);
+            print_adhoc_elements(m_out, vresult);
+            ifputs("</vresult>\n", m_out);
          }
       }
       catch(const std::exception &e)
