@@ -1,0 +1,147 @@
+@node Debugging Schema
+@chapter Debugging Schema
+
+This is an incomplete chapter that is hosting one or more (it should be
+growing) unintuitive debugging strategies.
+
+@menu
+* Command Line Interface::    View XML document sent to client
+* Using save-post::           Especially for debugging uploads
+@end menu
+
+
+@node Command Line Interface
+@section Command Line Interface
+
+Refer to @code{man schema.fcgi} for some of the command line options.
+It's not a complete reference, but it's a start.
+
+This section is not complete because the main purpose of this chapter
+is to document the @code{save-post}.
+
+@node Using save-post
+@section Using save-post
+
+While the @code{save-post} instruction can help debug many types of
+interactions, it is particularly useful for debugging file uploads.
+
+Most SchemaServer interactions can be debugged on the command line using
+the @command{schema.fcgi} with the script, mode name, and as many @code{-v}
+parameter values as necessary to satisfy the parameters of the stored
+procedure.  However, it isn't possible to specify file contents using
+@code{-v}.
+
+@code{save-post}, when included in a response mode, will save the
+contents of a POST interaction into a data file from a regular browser
+interaction.  The saved data file can then be passed into @command{schema.fcgi}
+to test the output, view generated errors, etc.
+
+@menu
+* Prepare save-post Response Mode::
+* Use save-post File on Command Line::
+* Original save-post Documentation::
+@end menu
+
+@node Prepare save-post Response Mode
+@subsection Prepare save-post Response Mode
+
+Using the @code{save-post} feature requires two response mode
+instructions, @code{save-post} to specify the mode, and @code{target}
+to indicate the name of the file where the POST values are to be
+written.
+
+@code{schema.fcgi} saves the POST data exactly as it is received
+from the browser that submits it.  If the data is adequate for the
+application, it will also be adequate when using @code{-i} option.
+
+Considering a response mode like this:
+
+@example
+add_submit
+   type      : form-submit
+   procedure : App_Form_Save
+   result
+      type : update
+@end example
+
+can be changed to save the POST values with the following changes.
+
+Note that there is not @code{procedure} instruction.  This is because
+the POST data is consumed when @code{save-post} writes the file, and
+is not longer available for the procedure.
+
+@example
+add_submit
+   type      : save-post
+   target    : /tmp/add_submit.txt
+#   type      : form-submit
+#   procedure : App_Form_Save
+#   result
+#      type : update
+@end example
+
+For a file upload, the capture must happen in place of the @code{import}
+instruction that is the target of the @code{type-import}.
+
+@example
+main
+   type        : form-import
+   form-action : import
+
+import
+   type   : import
+   target : QT_Import_Person_Table
+   jump   : ?review
+@end example
+
+The best practice IMHO for debugging an upload is to create a new
+import response mode to intercept the upload file, then using the
+original import response mode on the command line.
+
+Notice that the @code{form-action} instruction has changed in the 
+@code{main} response mode, and the new @code{import_save} response
+mode target.
+
+@example
+main
+   type        : form-import
+   form-action : import_save
+
+import_save
+   type   : save-post
+   target : /tmp/uploaded_persons.txt
+
+import
+   type   : import
+   target : QT_Import_Person_Table
+   jump   : ?review
+@end example
+
+IMPORTANT: remember to restore the original @code{form-action} value
+when you are finished debugging!
+
+@node Use save-post File on Command Line
+@subsection Use save-post File on Command Line
+
+Given that a file, @file{/tmp/uploaded_persons.txt}, is available,
+it can be used with the @code{-i} option, thus:
+
+@example
+ $ schema.fcgi Person.srm -m import -i /tmp/uploaded_persons.txt
+@end example
+
+IMPORTANT: remember to restore the original @code{form-action} value
+when you are finished debugging!
+
+
+@node Original save-post Documentation
+@subsection Original save-post Documentation
+
+A more complete treatment of this feature was written long ago.
+That treatment contains more details that might be useful if
+information in the section is not sufficient.
+
+The URL to the original treatment is at:
+
+@url{https://github.com/cjungmann/schemafw/blob/master/userguide/SavePostResponseMode.md}
+
