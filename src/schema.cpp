@@ -2760,6 +2760,11 @@ void Schema::process_response_mode(void)
 
    if (m_mode_action==MACTION_SAVE_POST || m_mode->seek("save-post","true"))
    {
+      // Ignore GET request to preserve the saved file.
+      // This (maybe) strange behavior is to prevent the framework's
+      // default response to a new page which is to reload the page.
+      // If the page is the result of a POST interaction, the reload
+      // will omit the POST variables.
       const char *type = getenv("REQUEST_METHOD");
       if (type && strcmp(type,"GET")==0)
       {
