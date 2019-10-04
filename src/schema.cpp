@@ -139,6 +139,7 @@ const Schema::struct_mode_action Schema::map_mode_actions[] =
    { "display",         Schema::MACTION_DISPLAY         },
    { "form-edit",       Schema::MACTION_FORM_EDIT       },
    { "form-new",        Schema::MACTION_FORM_NEW        },
+   { "form-page",       Schema::MACTION_FORM_PAGE       },
    { "form-import",     Schema::MACTION_FORM_IMPORT     },
    { "form-view",       Schema::MACTION_FORM_VIEW       },
    { "import-review",   Schema::MACTION_IMPORT_REVIEW   },
