@@ -2786,11 +2786,6 @@ void Schema::process_response_mode(void)
       return;
    }
 
-   // The early jump with via "Status: 303" and Location is done,
-   // everything after this uses "Status: 200", so let's send it
-   // before we go on:
-   print_Status_200();
-
    // If a session is needed but expired or not yet running,
    // start a session and write out new cookie values:
    if (stype>STYPE_NONE && sstatus<SSTAT_RUNNING)
@@ -2798,6 +2793,8 @@ void Schema::process_response_mode(void)
       // This function creates the records and writes the cookie values:
       if (!create_session_records())
       {
+         ifputs("Status: 401 Unauthorized Access\n", s_header_out);
+
          print_XML_ContentType();
          write_headers_end();
          write_xml_start();
@@ -2810,6 +2807,11 @@ void Schema::process_response_mode(void)
          return;
       }
    }
+
+   // The early jump with via "Status: 303" and Location is done,
+   // everything after this uses "Status: 200", so let's send it
+   // before we go on:
+   print_Status_200();
 
    if (m_mode_action==MACTION_EXPORT || m_mode_action==MACTION_GENERATE)
    {
@@ -2840,11 +2842,14 @@ void Schema::process_response_mode(void)
             
    write_headers_end();
 
+   // Ensure headers end before export or generate begin:
+   iflush(s_header_out);
+
    if (m_mode_action==MACTION_EXPORT)
    {
       process_export();
    }
-   else if (m_mode_action==MACTION_GENERATE)
+   else if (m_mode_action == MACTION_GENERATE)
    {
       process_generate();
    }
