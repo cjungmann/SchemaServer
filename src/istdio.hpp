@@ -54,6 +54,7 @@ inline size_t ifread(void* bf, size_t s, size_t n, FCGI_FILE *fp)
 inline size_t ifwrite(void* bf, size_t s, size_t n, FCGI_FILE *fp)
                                                      { return FCGI_fwrite(bf,s,n,fp); }
 inline int ifclose (FCGI_FILE* f)                    { return FCGI_fclose(f); }
+inline int iflush(FCGI_FILE* f)                      { return FCGI_fflush(f); }
 
 
 void reset_fcgi_streams(void);
@@ -87,6 +88,11 @@ inline FILE* gfdopen(int fh, const char* mode)  { return fdopen(fh,mode); }
 #undef fclose
 inline int gfclose(FILE* f) { return fclose(f); }
 #pragma pop_macro("fclose")
+
+#pragma push_macro("fflush")
+#undef fflush
+inline int gfflush(FILE* f) { return fflush(f); }
+#pragma pop_macro("fflush")
 
 #pragma push_macro("feof")
 #undef feof
