@@ -156,9 +156,9 @@ install:
 	# install utilities
 	$(call install_utilities)
 	# Prepare Apache to recognize schema.fcgi as a document handler
-	ifdef $(CGI_PATH)
-		install_for_apache
-	endif
+ifdef $(CGI_PATH)
+	install_for_apache
+endif
 
 update-docs:
 	$(call install_documentation)
@@ -170,9 +170,9 @@ update-server:
 	install -D --mode=755 schema.fcgi           /usr/local/lib/cgi-bin/schema.fcgi
 
 stop-update:
-	ifdef $(CGI_PATH)
-	  apache_stop_update
-	endif
+ifdef $(CGI_PATH)
+  apache_stop_update
+endif
 
 update-installs:
 	cp ../install/sys_procs.sql                 /usr/local/lib/SchemaServer/sys_procs.sql
@@ -180,10 +180,10 @@ update-installs:
 
 uninstall:
 	# disable apache configuration ahead of remove the conf file
-	ifdef $(CGI_PATH)
-		a2disconf SchemaServer
-		rm -f /etc/apache2/conf-available/SchemaServer.conf
-	endif
+ifdef $(CGI_PATH)
+	a2disconf SchemaServer
+	rm -f /etc/apache2/conf-available/SchemaServer.conf
+endif
 	# remove executable and its link
 	rm -f /usr/bin/schema.fcgi
 	rm -r -f /usr/local/lib/cgi-bin/schema.fcgi
