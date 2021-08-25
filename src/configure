@@ -157,7 +157,7 @@ install:
 	$(call install_utilities)
 	# Prepare Apache to recognize schema.fcgi as a document handler
 ifdef CGI_PATH
-	install_for_apache
+	$(call install_for_apache)
 endif
 
 update-docs:
@@ -171,7 +171,7 @@ update-server:
 
 stop-update:
 ifdef CGI_PATH
-  apache_stop_update
+  $(call apache_stop_update)
 endif
 
 update-installs:
