@@ -156,7 +156,7 @@ install:
 	# install utilities
 	$(call install_utilities)
 	# Prepare Apache to recognize schema.fcgi as a document handler
-ifdef $(CGI_PATH)
+ifdef CGI_PATH
 	install_for_apache
 endif
 
@@ -170,7 +170,7 @@ update-server:
 	install -D --mode=755 schema.fcgi           /usr/local/lib/cgi-bin/schema.fcgi
 
 stop-update:
-ifdef $(CGI_PATH)
+ifdef CGI_PATH
   apache_stop_update
 endif
 
@@ -180,7 +180,7 @@ update-installs:
 
 uninstall:
 	# disable apache configuration ahead of remove the conf file
-ifdef $(CGI_PATH)
+ifdef CGI_PATH
 	a2disconf SchemaServer
 	rm -f /etc/apache2/conf-available/SchemaServer.conf
 endif
