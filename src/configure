@@ -1,6 +1,37 @@
 #!/bin/bash
 # -*- mode:sh -*-
 
+check_for_libfcgi-dev()
+{
+    if ! [ -f '/usr/include/fcgi_stdio.h' ]; then
+        echo "This project requires \`fcgi_stdio.h\`.  Please install package"
+        echo "\`libfcgi-dev\` with your platform's package manager and then"
+        echo "run ./config again."
+        return 1
+    else
+        return 0
+    fi
+}
+
+check_for_mysql_config()
+{
+    if ! which mysql_config; then
+        echo "This project required \`mysql_config\`, Please install package"
+        echo "\`libmariadbclient-dev\` with your platform's package manager"
+        echo "and then run ./config again."
+        return 1
+    else
+        return 0
+    fi
+}
+
+if ! check_for_libfcgi-dev || ! check_for_mysql_config; then
+    exit 1
+fi
+
+
+
+
 output=Makefile
 
 # truncate output file:
