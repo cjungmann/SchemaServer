@@ -1,4 +1,4 @@
-// -*- compile-command: "g++ -std=c++11 -fno-inline -Wall -Werror -Weffc++ -pedantic -DINCLUDE_STOREDPROC_MAIN `mysql_config --cflags` -o storedproc storedproc.cpp `mysql_config --libs`" -*-
+// -*- compile-command: "g++ -std=c++11 -fno-inline -Wall -Werror -Weffc++ -pedantic -ggdb -DINCLUDE_STOREDPROC_MAIN `mysql_config --cflags` -o storedproc storedproc.cpp `mysql_config --libs`" -*-
 
 /** @file */
 
@@ -129,7 +129,7 @@ void Result_User_Build_Schema::build_param_stack(DataStack<BindC> &result2, Simp
    BindEl<ai_text, const char*> name(result2,index++);
    BindEl<ai_text, const char*> dtype(result2,index++);
    BindEl<ai_long, int32_t>     maxlen(result2,index++);
-   BindEl<ai_long, int64_t>     num_prec(result2,index++);
+   BindEl<ai_long, NP_TYPE>     num_prec(result2,index++);
    BindEl<ai_long, int32_t>     num_scale(result2,index++);
    BindEl<ai_text, const char*> dtdid(result2,index++);
 //   BindEl<ai_longlong, int64_t>     is_unsigned(result2,index++);
@@ -456,12 +456,12 @@ int main(int argc, char **argv)
    const char *host = nullptr;
    const char *user = nullptr;
    const char *password = nullptr;
-//   const char *database = "SchemaDemo";
-   const char *database = "AllowanceDemo";
+   const char *database = "mysite";
+   const char *procname = "App_Person_List"
 
    if (mysql_real_connect(&mysql, host, user, password, database, 0, nullptr, 0))
    {
-      test_storedproc(&mysql, "App_Person_Submit");
+      test_storedproc(&mysql, procname);
 
       mysql_close(&mysql);
    }
