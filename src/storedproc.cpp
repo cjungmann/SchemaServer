@@ -457,7 +457,7 @@ int main(int argc, char **argv)
    const char *user = nullptr;
    const char *password = nullptr;
    const char *database = "mysite";
-   const char *procname = "App_Person_List"
+   const char *procname = "App_Person_List";
 
    if (mysql_real_connect(&mysql, host, user, password, database, 0, nullptr, 0))
    {
