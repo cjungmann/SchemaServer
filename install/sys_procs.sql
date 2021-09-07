@@ -136,9 +136,9 @@ BEGIN
       SELECT PARAMETER_MODE as mode,
              PARAMETER_NAME as name,
              DATA_TYPE as dtype,
-             CHARACTER_MAXIMUM_LENGTH as len,
-             CAST(NUMERIC_PRECISION AS SIGNED) as num_prec,
-             NUMERIC_SCALE as num_scale,
+             CAST(CHARACTER_MAXIMUM_LENGTH AS UNSIGNED) as len,
+             CAST(NUMERIC_PRECISION AS UNSIGNED) as num_prec,
+             CAST(NUMERIC_SCALE AS UNSIGNED) as num_scale,
              DTD_IDENTIFIER as dtdid
         FROM information_schema.PARAMETERS
        WHERE SPECIFIC_SCHEMA = DATABASE()
