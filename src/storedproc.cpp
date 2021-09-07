@@ -126,11 +126,11 @@ void Result_User_Build_Schema::build_param_stack(DataStack<BindC> &result2, Simp
    
    // Make a handle for each field:
    int index=1;
-   BindEl<ai_text, const char*> name(result2,index++);
-   BindEl<ai_text, const char*> dtype(result2,index++);
-   BindEl<ai_long, int32_t>     maxlen(result2,index++);
-   BindEl<ai_long, NP_TYPE>     num_prec(result2,index++);
-   BindEl<ai_long, int32_t>     num_scale(result2,index++);
+   BindEl<ai_text, const char*>  name(result2,index++);
+   BindEl<ai_text, const char*>  dtype(result2,index++);
+   BindEl<ai_longlong, uint64_t> maxlen(result2,index++);
+   BindEl<ai_longlong, uint64_t> num_prec(result2,index++);
+   BindEl<ai_longlong, uint64_t> num_scale(result2,index++);
    BindEl<ai_text, const char*> dtdid(result2,index++);
 //   BindEl<ai_longlong, int64_t>     is_unsigned(result2,index++);
 
