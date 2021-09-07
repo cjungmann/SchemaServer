@@ -87,11 +87,11 @@ void Result_User_Build_Schema::check_result_2(DataStack<BindC> &ds)
       s_checked_result_2 = -1;
    if (!s_checked_result_2 && !check_bind_element<ai_text>(ds,"dtype",index++))
       s_checked_result_2 = -1;
-   if (!s_checked_result_2 && !check_bind_element<ai_long>(ds,"len",index++))
+   if (!s_checked_result_2 && !check_bind_element<ai_ulonglong>(ds,"len",index++))
       s_checked_result_2 = -1;
-   if (!s_checked_result_2 && !check_bind_element<ai_longlong>(ds,"num_prec",index++))
+   if (!s_checked_result_2 && !check_bind_element<ai_ulonglong>(ds,"num_prec",index++))
       s_checked_result_2 = -1;
-   if (!s_checked_result_2 && !check_bind_element<ai_long>(ds,"num_scale",index++))
+   if (!s_checked_result_2 && !check_bind_element<ai_ulonglong>(ds,"num_scale",index++))
       s_checked_result_2 = -1;
    if (!s_checked_result_2 && !check_bind_element<ai_text>(ds,"dtdid",index++))
       s_checked_result_2 = -1;
@@ -126,12 +126,12 @@ void Result_User_Build_Schema::build_param_stack(DataStack<BindC> &result2, Simp
    
    // Make a handle for each field:
    int index=1;
-   BindEl<ai_text, const char*>  name(result2,index++);
-   BindEl<ai_text, const char*>  dtype(result2,index++);
-   BindEl<ai_longlong, uint64_t> maxlen(result2,index++);
-   BindEl<ai_longlong, uint64_t> num_prec(result2,index++);
-   BindEl<ai_longlong, uint64_t> num_scale(result2,index++);
-   BindEl<ai_text, const char*> dtdid(result2,index++);
+   BindEl<ai_text, const char*>   name(result2,index++);
+   BindEl<ai_text, const char*>   dtype(result2,index++);
+   BindEl<ai_ulonglong, uint64_t> maxlen(result2,index++);
+   BindEl<ai_ulonglong, uint64_t> num_prec(result2,index++);
+   BindEl<ai_ulonglong, uint64_t> num_scale(result2,index++);
+   BindEl<ai_text, const char*>   dtdid(result2,index++);
 //   BindEl<ai_longlong, int64_t>     is_unsigned(result2,index++);
 
    // Create and initialize the MYSQL_BIND array:
