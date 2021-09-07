@@ -25,67 +25,6 @@ check_for_mysql_config()
     fi
 }
 
-get_mysql_field_type()
-{
-    local table="$1"
-    local column="$2"
-    local -a result
-    local -a query=(
-        "SELECT DATA_TYPE, COLUMN_TYPE"
-        "  FROM information_schema.COLUMNS"
-        " WHERE TABLE_SCHEMA = 'information_schema'"
-        "   AND TABLE_NAME = '${table}'"
-        "   AND COLUMN_NAME = '${column}'"
-    )
-
-    result=( $( mysql -BN -e "${query[*]}" ) )
-    if [ $? -eq 0 ]; then
-        echo "${result[*]}"
-        return 0
-    else
-        echo "The query failed." >&2
-        return 1
-    fi
-}
-
-get_num_prec_type()
-{
-    local table="PARAMETERS"
-    local colname="NUMERIC_PRECISION"
-    local int_type
-
-    local -a types
-    types=( $( get_mysql_field_type "${table}" "${colname}" ) )
-    if [ $? -ne 0 ]; then
-        echo "Failed to get the mysql field type." >&2
-    else
-        re=\([[:alpha:]]\+\)?int
-        if [[ "${types[0]}" =~ $re ]]; then
-            if [[ "${types[1]}" =~ "unsigned" ]]; then
-                int_type="ai_u"
-            else
-                int_type="ai_"
-            fi
-
-            case "${BASH_REMATCH[1]}" in
-                tiny  ) int_type="${int_type}tiny" ;;
-                small ) int_type="${int_type}short" ;;
-                big   ) int_type="${int_type}longlong" ;;
-                *     ) int_type="${int_type}long" ;;
-            esac
-
-            echo "${int_type}"
-        else
-            echo "Failed to match ${types[0]} with our regular expression." >&2
-        fi
-    fi
-}
-
-if ! check_for_libfcgi-dev || ! check_for_mysql_config; then
-    exit 1
-fi
-
-
 output=Makefile
 
 # truncate output file:
@@ -94,9 +33,6 @@ output=Makefile
 # Get flags from mysql_config:
 echo "MYSQL_COMPILE_FLAGS = $(mysql_config --cflags)" >> ${output}
 echo "MYSQL_LINK_FLAGS = $(mysql_config --libs)" >> ${output}
-
-echo "PARAM_STACK_FLAGS = -D NP_TYPE=$( get_num_prec_type )" >> ${output}
-
 
 # Add Apache stuff if Apache is installed:
 which apache2 > /dev/null
@@ -115,7 +51,7 @@ fi
 # Overriding -g with -ggdb on linux
 (cat << 'EOF'
 COMPILE_FLAGS = -std=c++11 -Wall -Werror -Weffc++ -pedantic -ggdb -D _DEBUG -D FASTCGI
-CXXFLAGS = $(MYSQL_COMPILE_FLAGS) $(COMPILE_FLAGS) $(PARAM_STACK_FLAGS)
+CXXFLAGS = $(MYSQL_COMPILE_FLAGS) $(COMPILE_FLAGS)
 LINK_FLAGS = $(VERSION_LINK_FLAGS) -L /usr/local/lib -lfcgi $(MYSQL_LINK_FLAGS) -lpthread
 CXX = g++
 
