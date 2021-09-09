@@ -30,6 +30,9 @@ This manual is an offline reference for the SchemaServer component,
 and testing @code{schema.fcgi}, SRM script syntax usage and examples,
 and command line options for debugging scripts.
 
+There are also @emph{man} pages for the executable, @code{man schema.fcgi(1)}
+and @code{man schema.fcgi(7)}, that you may find useful.
+
 I apologize to anyone finding this manual who hopes for a comprehensive
 treatment in the use of SchemaServer.  I began this manual to create
 @emph{offline} documentation that I can refer to when I need a
