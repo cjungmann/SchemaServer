@@ -246,23 +246,28 @@ void Result_As_XML::report_error(const char *str)
 
 void SimpleProcedure::bind_result_and_run(BindStack &bs)
 {
-   mysql_stmt_bind_result(m_stmt, bs.binds());
-   
-   if (m_user)
-   {
-      m_user->pre_fetch_use_result(m_result_number, bs, *this);
-      if (running())
-      {
-         while (fetch(bs))
-            m_user->use_result_row(m_result_number, bs);
+   my_bool result;
 
-         m_user->result_complete(m_result_number, bs);
+   if (!(result = mysql_stmt_bind_result(m_stmt, bs.binds())))
+   {
+      if (m_user)
+      {
+         m_user->pre_fetch_use_result(m_result_number, bs, *this);
+         if (running())
+         {
+            while (fetch(bs))
+               m_user->use_result_row(m_result_number, bs);
+
+            m_user->result_complete(m_result_number, bs);
+         }
       }
+      // If no user assigned, just bleed-out the results:
+      else if (running())
+         while (fetch(bs))
+            ;
    }
-   // If no user assigned, just bleed-out the results:
-   else if (running())
-      while (fetch(bs))
-         ;
+   else
+      report_error(result, "bind_result_and_run");
 }
 
 /**
