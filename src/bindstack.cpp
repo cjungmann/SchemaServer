@@ -52,11 +52,11 @@ void BindStack::t_build(MYSQL_RES *res, IGeneric_Callback<BindStack> &user)
 
       size_t alloclen = t_handle<BindC>::line_size(fptr->name_length, extra_size);
       void *linebuff = alloca(alloclen);
+      memset(linebuff, 0, alloclen);
 
       tail = t_handle<BindC>::init_handle(linebuff, fptr->name, extra_size, tail);
 
       BindC &bindc = tail->object();
-      memset(&bindc, 0, sizeof(BindC));
       bindc.initialize(bptr, tail->extra(), extra_size, ctype);
       bindc.set_values_from(fptr);
 
