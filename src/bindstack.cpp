@@ -50,7 +50,13 @@ void BindStack::t_build(MYSQL_RES *res, IGeneric_Callback<BindStack> &user)
       // other member functions can use and reuse it:
       size_t extra_size = calc_buffer_size(ctype, fptr->length);
 
-      size_t alloclen = t_handle<BindC>::line_size(fptr->name_length, extra_size);
+      // Kludge for MariaDB, where the string length values in the
+      // MYSQL_FIELD struct are missing or wrong
+      size_t name_length = ftpr->name_length;
+      if (!name_length)
+         name_length = strlen(fptr->name);
+
+      size_t alloclen = t_handle<BindC>::line_size(name_length, extra_size);
       void *linebuff = alloca(alloclen);
       memset(linebuff, 0, alloclen);
 
