@@ -52,7 +52,7 @@ void BindStack::t_build(MYSQL_RES *res, IGeneric_Callback<BindStack> &user)
 
       // Kludge for MariaDB, where the string length values in the
       // MYSQL_FIELD struct are missing or wrong
-      size_t name_length = ftpr->name_length;
+      size_t name_length = fptr->name_length;
       if (!name_length)
          name_length = strlen(fptr->name);
 
