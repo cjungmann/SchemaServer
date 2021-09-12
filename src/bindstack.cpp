@@ -56,6 +56,9 @@ void BindStack::t_build(MYSQL_RES *res, IGeneric_Callback<BindStack> &user)
       if (!name_length)
          name_length = strlen(fptr->name);
 
+      // Kludge to fix unaccounted-for length error:
+      ++name_length;
+
       size_t alloclen = t_handle<BindC>::line_size(name_length, extra_size);
       void *linebuff = alloca(alloclen);
       memset(linebuff, 0, alloclen);
