@@ -25,7 +25,7 @@ void BindStack::t_build(MYSQL_RES *res, IGeneric_Callback<BindStack> &user)
 {
    int count = res->field_count;
    line_handle *lines = static_cast<line_handle*>(alloca(count*sizeof(line_handle)));
-   memset(lines, 0, count*sizeof(line_handle*));
+   memset(lines, 0, count*sizeof(line_handle));
    
    MYSQL_BIND *binds = static_cast<MYSQL_BIND*>(alloca(count * sizeof(MYSQL_BIND)));
    memset(binds, 0, count*sizeof(MYSQL_BIND));
@@ -53,7 +53,7 @@ void BindStack::t_build(MYSQL_RES *res, IGeneric_Callback<BindStack> &user)
       // Kludge for MariaDB, where the string length values in the
       // MYSQL_FIELD struct are missing or wrong
       size_t name_length = fptr->name_length;
-      if (!name_length)
+      if (name_length == 0)
          name_length = strlen(fptr->name);
 
       // Kludge to fix unaccounted-for length error:
