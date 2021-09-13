@@ -143,6 +143,7 @@ void BindStack::t_build(const char *typestr, IGeneric_Callback<BindStack> &user)
       
       size_t alloclen = t_handle<BindC>::line_size("", extra_size);
       void *linebuff = alloca(alloclen);
+      memset(linebuff, 0, alloclen);
 
       tail = t_handle<BindC>::init_handle(linebuff, "", extra_size, tail);
 
