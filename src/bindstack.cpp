@@ -50,11 +50,11 @@ void BindStack::t_build(MYSQL_RES *res, IGeneric_Callback<BindStack> &user)
       // other member functions can use and reuse it:
       size_t extra_size = calc_buffer_size(ctype, fptr->length);
 
-      // Kludge for MariaDB, where the string length values in the
-      // MYSQL_FIELD struct are missing or wrong
-      size_t name_length = fptr->name_length;
-      if (name_length == 0)
-         name_length = strlen(fptr->name);
+      // MariaDB fails to set MYSQL_FIELD::name_length and, additionally,
+      // may not be preset to 0s, it may have a very large number that
+      // will blow out the stack.  Using strlen() instead of using the
+      // unreliable number
+      size_t name_length = strlen(ptr->name);
 
       // Kludge to fix unaccounted-for length error:
       ++name_length;
