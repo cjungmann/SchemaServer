@@ -1,5 +1,3 @@
-// -*- compile-command: "g++ -std=c++11 -fno-inline -Wall -Werror -Weffc++ -pedantic -ggdb -DINCLUDE_STOREDPROC_MAIN `mysql_config --cflags` -o storedproc storedproc.cpp `mysql_config --libs`" -*-
-
 /** @file */
 
 #include "storedproc.hpp"
@@ -406,7 +404,7 @@ void StoredProc::build(MYSQL *mysql,
    BindStack::build("s64", fParamStack);
 }
 
-#ifdef INCLUDE_STOREDPROC_MAIN
+#ifdef STOREDPROC_MAIN
 
 #include "istdio.cpp"
 #include "prandstr.cpp"
@@ -477,4 +475,27 @@ int main(int argc, char **argv)
 
 
 
-#endif // INCLUDE_STOREDPROC_MAIN
+#endif // STOREDPROC_MAIN
+
+/* Consult the following page for run time sanitizer flags:
+ * https://github.com/google/sanitizers/wiki/AddressSanitizerFlags
+ *
+ * especially consider setting the enviroment variable:
+ * EXPORT ASAN_OPTIONS='malloc_fill_byte=0:disable_coredump=0:unmap_shadow_on_exit=1:abort_on_error=1'
+ *
+ * (`malloc_fill_byte=0` prevents MariaDB uninitialized MYSQL_FIELD field length errors)
+ *
+ * Three extra-long lines below support AddressSanitizer.  Remove if not needed.
+ */
+
+/* Local Variables: */
+/* compile-command: "b=storedproc;                       \*/
+/* g++ -std=c++11 -Wall -Werror -Weffc++ -pedantic -ggdb \*/
+/* -g -O1 -fsanitize=address -fsanitize-recover=address                  \*/
+/* -fno-inline -fno-optimize-sibling-calls -fno-omit-frame-pointer       \*/
+/* `mysql_config --cflags`      \*/
+/* -D${b^^}_MAIN -o $b ${b}.cpp \*/
+/* -fsanitize=address -static-libstdc++ -static-libasan -lrt             \*/
+/* `mysql_config --libs`        \*/
+/* "                            \*/
+/* End: */
