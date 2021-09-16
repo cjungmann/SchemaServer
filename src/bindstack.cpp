@@ -54,7 +54,7 @@ void BindStack::t_build(MYSQL_RES *res, IGeneric_Callback<BindStack> &user)
       // may not be preset to 0s, it may have a very large number that
       // will blow out the stack.  Using strlen() instead of using the
       // unreliable number
-      size_t name_length = strlen(ptr->name);
+      size_t name_length = strlen(fptr->name);
 
       // Kludge to fix unaccounted-for length error:
       ++name_length;
