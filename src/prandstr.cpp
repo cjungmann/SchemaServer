@@ -413,7 +413,7 @@ mydate mydate_from_stream(IStreamer &s)
                         &rval.m_hour, &rval.m_minute, &rval.m_second };
    int      index=0;
    char     arr_delim[] = {'-', '/', 'T', ' ', ':', 'a', 'A', 'p', 'P'};
-   char     ch;
+   int      ch;
 
    const char *digit;
    const char *delim;
