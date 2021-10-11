@@ -7,7 +7,11 @@
 #include <stdexcept>
 #include "prandstr.hpp"
 
+#ifdef BSD
+#include <sys/endian.h>
+#else
 #include <endian.h>  // detect endian-ness for dash_val() function
+#endif
 
 /**
  * @brief Convert a char to a dashed-char uint16_t value for switch statements.
