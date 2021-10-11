@@ -3,9 +3,14 @@
 #include <string.h>
 #include <math.h>        // for pow() and log10()
 
-#define __USE_MISC
+// Handle missing alloc.h file in BSD:
+#ifndef __USE_MISC
+#define __USE_MISC 1
 #include <stdlib.h>
-// #include <alloca.h>
+#undef __USE_MISC
+#else
+#include <alloca.h>
+#endif
 
 #include <stdexcept>
 

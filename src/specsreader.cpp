@@ -4,9 +4,14 @@
 #include "specsreader.hpp"
 #include <assert.h>
 
-#define __USE_MISC
+// Handle missing alloc.h file in BSD:
+#ifndef __USE_MISC
+#define __USE_MISC 1
 #include <stdlib.h>
-// #include <alloca.h>
+#undef __USE_MISC
+#else
+#include <alloca.h>
+#endif
 
 void print_xml_attribute(FILE *out,
                          const char *tag,
