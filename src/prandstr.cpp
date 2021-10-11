@@ -2,7 +2,10 @@
 
 #include <string.h>
 #include <math.h>        // for pow() and log10()
-#include <alloca.h>
+
+#define __USE_MISC
+#include <stdlib.h>
+// #include <alloca.h>
 
 #include <stdexcept>
 

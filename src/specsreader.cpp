@@ -2,8 +2,11 @@
 
 
 #include "specsreader.hpp"
-#include <alloca.h>
 #include <assert.h>
+
+#define __USE_MISC
+#include <stdlib.h>
+// #include <alloca.h>
 
 void print_xml_attribute(FILE *out,
                          const char *tag,
