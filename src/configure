@@ -86,10 +86,11 @@ ctyper.hpp bindc.hpp bindstack.hpp procedure.hpp storedproc.hpp fods.hpp \
 schema.hpp multipart_pull.hpp  mysql_loaddata.hpp linebuffer.hpp
 
 define install_utilities
-	install -D --mode=755 ../utilities/ss_chkprocs             /usr/local/lib/SchemaServer/utilities/ss_chkprocs
-	install -D --mode=755 ../utilities/ss_chksite              /usr/local/lib/SchemaServer/utilities/ss_chksite
-	install -D --mode=755 ../utilities/ss_webscript            /usr/local/lib/SchemaServer/utilities/ss_webscript
-	install -D --mode=644 ../utilities/test.xsl                /usr/local/lib/SchemaServer/utilities/test.xsl
+	mkdir -p /usr/local/lib/SchemaServer/utilities
+	install -m 755 ../utilities/ss_chkprocs             /usr/local/lib/SchemaServer/utilities/ss_chkprocs
+	install -m 755 ../utilities/ss_chksite              /usr/local/lib/SchemaServer/utilities/ss_chksite
+	install -m 755 ../utilities/ss_webscript            /usr/local/lib/SchemaServer/utilities/ss_webscript
+	install -m 644 ../utilities/test.xsl                /usr/local/lib/SchemaServer/utilities/test.xsl
 	cp -sf /usr/local/lib/SchemaServer/utilities/ss_chkprocs   /usr/bin/ss_chkprocs
 	cp -sf /usr/local/lib/SchemaServer/utilities/ss_chksite    /usr/bin/ss_chksite
 	cp -sf /usr/local/lib/SchemaServer/utilities/ss_webscript  /usr/bin/ss_webscript
@@ -117,7 +118,7 @@ define install_for_apache
    # a2enmod include
    a2enmod actions
    apt-get install libapache2-mod-fcgid 
-	install -D --mode=644 ../install/SchemaServer.conf /etc/apache2/conf-available/SchemaServer.conf
+	install -m 644 ../install/SchemaServer.conf /etc/apache2/conf-available/SchemaServer.conf
 	a2enconf SchemaServer
 endef
 
@@ -129,7 +130,8 @@ endef
 
 define apache_stop_update
 	sudo /etc/init.d/apache2 stop
-	install -D --mode=755 schema.fcgi           /usr/local/lib/cgi-bin/schema.fcgi
+	mkdir -p /usr/local/lib/cgi-bin
+	install -m 755 schema.fcgi           /usr/local/lib/cgi-bin/schema.fcgi
 	sudo /etc/init.d/apache2 start
 endef
 
@@ -199,12 +201,15 @@ storedproc.o : storedproc.cpp ${hpplist}
 
 # Special builds
 install:
-	install -D --mode=644 ../LICENSE             /usr/share/doc/SchemaServer
+	mkdir -p /usr/share/doc/SchemaServer
+	install -m 644 ../LICENSE             /usr/share/doc/SchemaServer
 	# install executable and make link
-	install -D --mode=755 schema.fcgi            /usr/local/lib/cgi-bin/schema.fcgi
+	mkdir -p /usr/local/lib/cgi-bin
+	install -m 755 schema.fcgi            /usr/local/lib/cgi-bin/schema.fcgi
 	cp -sf /usr/local/lib/cgi-bin/schema.fcgi    /usr/bin/schema.fcgi
 
-	install -D --mode=644 ../install/sys_procs.sql  /usr/local/lib/SchemaServer/install/sys_procs.sql
+	mkdir -p /usr/local/lib/SchemaServer/install
+	install -m 644 ../install/sys_procs.sql  /usr/local/lib/SchemaServer/install/sys_procs.sql
 	cp -r ../install/ods                         /usr/local/lib/SchemaServer/install
 	# install man and info:
 	$(call install_documentation)
@@ -222,7 +227,8 @@ update-utilities:
 	$(call install_utilities)
 
 update-server:
-	install -D --mode=755 schema.fcgi           /usr/local/lib/cgi-bin/schema.fcgi
+	mkdir -p /usr/local/lib/cgi-bin
+	install -m 755 schema.fcgi           /usr/local/lib/cgi-bin/schema.fcgi
 
 stop-update:
 ifdef CGI_PATH
